@@ -1,13 +1,12 @@
 <template>
   <div class="spacepunk-interface">
-    <!-- Server Status Bar -->
-    <div class="status-bar">
-      <span>[SPACEPUNK LOGISTICS v0.1]</span>
-      <span v-if="serverStatus">TICK: {{ serverStatus.currentTick }}</span>
-      <span v-if="serverStatus" class="connection-indicator" :class="connectionStatus">
-        {{ connectionStatus.toUpperCase() }}
-      </span>
-    </div>
+    <!-- Enhanced System Status Bar -->
+    <SystemStatusBar 
+      :server-status="serverStatus"
+      :connection-status="connectionStatus"
+      :game-state="gameState"
+      ref="statusBarRef"
+    />
 
     <!-- Main Game Interface -->
     <div v-if="!player" class="login-screen">
@@ -128,6 +127,8 @@
 const websocket = ref(null)
 const connectionStatus = ref('disconnected')
 const serverStatus = ref(null)
+const gameState = ref({ activePlayers: 0 })
+const statusBarRef = ref(null)
 const player = ref(null)
 const ship = ref(null)
 const crew = ref([])
@@ -313,22 +314,7 @@ function formatDate(dateString) {
   min-height: 100vh;
 }
 
-.status-bar {
-  border: 1px solid #00ff00;
-  padding: 4px 8px;
-  margin-bottom: 8px;
-  display: flex;
-  justify-content: space-between;
-  background: #001100;
-}
-
-.connection-indicator.connected {
-  color: #00ff00;
-}
-
-.connection-indicator.disconnected {
-  color: #ff6600;
-}
+/* Status bar styles moved to SystemStatusBar component */
 
 .connection-indicator.error {
   color: #ff0000;
