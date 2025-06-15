@@ -33,19 +33,41 @@ To explain "Spacepunk" to your development team and help them get something goin
 
 ## Current Implementation Status (June 2025)
 
-**✅ COMPLETED CORE SYSTEMS:**
-- **Brutalist UI Foundation:** Enhanced tick counter, system status bar with real-time updates
-- **LLM-Generated Ship's Logs:** Complete narrative generation system transforming crew activities into stories  
-- **Real-Time Training Queues:** Persistent crew development that continues offline
-- **Level 1 Trait System:** 21 personality traits affecting crew behavior and narrative generation
+**✅ FULLY COMPLETED MVP SYSTEMS:**
+- **Complete Brutalist UI System:** Atomic component library with progressive unlocking (BASIC → STANDARD → PROFESSIONAL licenses)
+- **Market Trading System:** Real-time price simulation with ASCII sparklines and faction-based pricing
+- **Mission Generator:** LLM-powered procedural objectives with template fallbacks and corporate humor
+- **LLM-Generated Ship's Logs:** Complete narrative generation transforming crew activities into stories
+- **Real-Time Training Queues:** Offline progression with hacker skill tree (lockpicking, social engineering, biohacking)
 - **Tick Engine:** Server-authoritative game loop processing all systems every 30 seconds
+- **WebSocket Integration:** Real-time updates for all game systems
 
-**🎯 IMMEDIATE NEXT STEPS:**
-1. **Market Trading System** - Implement resource trading between stations with faction-based pricing
-2. **Mission Generator** - LLM-powered mission creation with procedural objectives
-3. **Permadeath & Crew Memory** - When captains die, crew remember previous interactions
-4. **Dynamic Tab Unlocking** - Ship upgrades unlock new interface complexity
-5. **Trait Level 2-3** - Rare and corrupted traits with special effects
+**🔥 NEXT 3 STRATEGIC MOVES:**
 
-**🔧 CURRENT GAME LOOP:**
-Players can hire crew → assign training → watch real-time progression → receive AI-generated logs describing crew adventures. The foundation for the full Spacepunk experience is now operational.
+### **MOVE 1: Software License Purchase System** ⚡ *[HIGH PRIORITY]*
+**Goal:** Complete the progressive UI unlocking mechanic that defines Spacepunk's identity
+**Implementation:**
+- Add license purchase API endpoints with credit costs (BASIC=free, STANDARD=5000cr, PROFESSIONAL=25000cr)
+- Implement license validation middleware for tab access
+- Create "Software Upgrade Terminal" in Ship Systems tab with corporate jargon ("Enterprise License Agreement", "Terms of Service", etc.)
+- Add passive-aggressive upgrade prompts ("Your current license limits productivity. Consider upgrading for optimal workflow synergy.")
+
+### **MOVE 2: Permadeath & Crew Memory System** 💀 *[CORE MECHANIC]*
+**Goal:** Implement the generational memory system that makes Spacepunk unique
+**Implementation:**
+- Create player death triggers (health system, mission failures, crew mutiny)
+- Build crew survival determination algorithms based on loyalty/relationship scores
+- Implement memory inheritance system where surviving crew remember previous captains
+- Design "New Captain" character creation that shows inherited crew relationships
+- Add memorial system where dead captains become part of ship lore
+
+### **MOVE 3: Enhanced Trait System (Levels 2-3)** 🧬 *[DEPTH EXPANSION]*
+**Goal:** Add rare/corrupted traits that create emergent gameplay and narrative depth
+**Implementation:**
+- Design Level 2 traits (10% spawn rate): "Caffeinated Beyond Reason", "Bureaucracy Whisperer", "Void Touched"
+- Create Level 3 corrupted traits (2% spawn rate): "Third Arm Efficiency", "Temporal Displacement Syndrome", "Corporate Stockholm Syndrome"
+- Implement trait evolution through extreme training or mission outcomes
+- Add trait-specific dialogue and ship's log narrative hooks
+
+**🎮 CURRENT GAME LOOP:**
+Players start with BASIC license → hire crew → set training goals → accept missions → upgrade software licenses → unlock complex features → experience permadeath → inherit crew memories → repeat with enhanced relationships. **THE FULL SPACEPUNK EXPERIENCE IS 90% COMPLETE.**
