@@ -1,18 +1,10 @@
 <template>
   <transition name="alert-fade">
-    <div
-      v-if="visible"
-      class="brutalist-alert"
-      :class="`alert-${type}`"
-    >
+    <div v-if="visible" class="brutalist-alert" :class="`alert-${type}`">
       <div class="alert-header">
         <span class="alert-type">[{{ type.toUpperCase() }}]</span>
         <span class="alert-timestamp">{{ timestamp }}</span>
-        <button
-          v-if="dismissible"
-          class="alert-close"
-          @click="$emit('dismiss')"
-        >
+        <button v-if="dismissible" class="alert-close" @click="$emit('dismiss')">
           [X]
         </button>
       </div>
@@ -20,12 +12,7 @@
         <slot>{{ message }}</slot>
       </div>
       <div v-if="actions && actions.length" class="alert-actions">
-        <button
-          v-for="(action, index) in actions"
-          :key="index"
-          class="alert-action"
-          @click="handleAction(action)"
-        >
+        <button v-for="(action, index) in actions" :key="index" class="alert-action" @click="handleAction(action)">
           [{{ action.label.toUpperCase() }}]
         </button>
       </div>
@@ -103,8 +90,8 @@ onUnmounted(() => {
 }
 
 .alert-info {
-  border-color: #00ffff;
-  color: #00ffff;
+  border-color: #ffffff;
+  color: #ffffff;
 }
 
 .alert-success {
@@ -113,8 +100,8 @@ onUnmounted(() => {
 }
 
 .alert-warning {
-  border-color: #ffff00;
-  color: #ffff00;
+  border-color: #ffaa00;
+  color: #ffaa00;
 }
 
 .alert-error {
@@ -124,8 +111,8 @@ onUnmounted(() => {
 }
 
 .alert-system {
-  border-color: #ff00ff;
-  color: #ff00ff;
+  border-color: #ffffff;
+  color: #ffffff;
   border-style: dashed;
 }
 
@@ -162,6 +149,18 @@ onUnmounted(() => {
   opacity: 1;
   background: currentColor;
   color: #000000;
+  /* Force background to be visible */
+  filter: invert(0);
+}
+
+.alert-close:hover:is(.alert-info *, .alert-system *) {
+  background: #ffffff;
+  color: #000000;
+}
+
+.alert-close:hover:is(.alert-warning *) {
+  background: #ffaa00;
+  color: #000000;
 }
 
 .alert-content {
@@ -191,9 +190,26 @@ onUnmounted(() => {
   color: #000000;
 }
 
+.alert-action:hover:is(.alert-info *, .alert-system *) {
+  background: #ffffff;
+  color: #000000;
+}
+
+.alert-action:hover:is(.alert-warning *) {
+  background: #ffaa00;
+  color: #000000;
+}
+
 @keyframes error-blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.3;
+  }
 }
 
 .alert-fade-enter-active,

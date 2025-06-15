@@ -1,22 +1,15 @@
 <template>
   <div class="brutalist-demo">
     <h1 class="demo-title">> SPACEPUNK UI COMPONENT LIBRARY</h1>
-    
+
     <!-- Panel Demo -->
     <section class="demo-section">
       <h2 class="section-title">BRUTALIST PANEL</h2>
-      <BrutalistPanel
-        title="SYSTEM STATUS"
-        subtitle="ONLINE"
-        footer="Last updated: 15:42:33"
-      >
+      <BrutalistPanel title="SYSTEM STATUS" subtitle="ONLINE" footer="Last updated: 15:42:33">
         <p>This is a basic panel component with title, subtitle, and footer.</p>
       </BrutalistPanel>
-      
-      <BrutalistPanel
-        title="ERROR PANEL"
-        :error="true"
-      >
+
+      <BrutalistPanel title="ERROR PANEL" :error="true">
         <p>This panel indicates an error state.</p>
       </BrutalistPanel>
     </section>
@@ -36,149 +29,97 @@
     <!-- Input Demo -->
     <section class="demo-section">
       <h2 class="section-title">BRUTALIST INPUT</h2>
-      <BrutalistInput
-        v-model="inputValue"
-        label="CREW NAME"
-        placeholder="Enter crew member name"
-      />
-      <BrutalistInput
-        v-model="errorInput"
-        label="VALIDATION ERROR"
-        :error="true"
-        error-message="Invalid input format"
-      />
-      <BrutalistInput
-        v-model="validInput"
-        label="VALID INPUT"
-        :valid="true"
-        hint="Name must be 3-20 characters"
-      />
+      <BrutalistInput v-model="inputValue" label="CREW NAME" placeholder="Enter crew member name" />
+      <BrutalistInput v-model="errorInput" label="VALIDATION ERROR" :error="true"
+        error-message="Invalid input format" />
+      <BrutalistInput v-model="validInput" label="VALID INPUT" :valid="true" hint="Name must be 3-20 characters" />
     </section>
 
     <!-- Select Demo -->
     <section class="demo-section">
       <h2 class="section-title">BRUTALIST SELECT</h2>
-      <BrutalistSelect
-        v-model="selectedOption"
-        label="SELECT DESTINATION"
-        :options="selectOptions"
-        placeholder="-- Choose destination --"
-      />
+      <BrutalistSelect v-model="selectedOption" label="SELECT DESTINATION" :options="selectOptions"
+        placeholder="-- Choose destination --" />
     </section>
 
     <!-- Table Demo -->
     <section class="demo-section">
       <h2 class="section-title">BRUTALIST TABLE</h2>
-      <BrutalistTable
-        title="CREW ROSTER"
-        :headers="tableHeaders"
-        :data="tableData"
-        :selectable="true"
-        @select="handleRowSelect"
-      />
+      <BrutalistTable title="CREW ROSTER" :headers="tableHeaders" :data="tableData" :selectable="true"
+        @select="handleRowSelect" />
     </section>
 
     <!-- Progress Demo -->
     <section class="demo-section">
       <h2 class="section-title">BRUTALIST PROGRESS</h2>
-      <BrutalistProgress
-        :value="25"
-        label="REACTOR CHARGE"
-        status="CHARGING..."
-      />
-      <BrutalistProgress
-        :value="75"
-        label="HULL INTEGRITY"
-        variant="warning"
-      />
-      <BrutalistProgress
-        :value="100"
-        label="TRAINING COMPLETE"
-        variant="success"
-      />
+      <BrutalistProgress :value="25" label="REACTOR CHARGE" status="CHARGING..." />
+      <BrutalistProgress :value="75" label="HULL INTEGRITY" variant="warning" />
+      <BrutalistProgress :value="100" label="TRAINING COMPLETE" variant="success" />
     </section>
 
     <!-- Alert Demo -->
     <section class="demo-section">
       <h2 class="section-title">BRUTALIST ALERT</h2>
-      <BrutalistAlert
-        type="info"
-        message="System update available. Version 2.4.1 ready for installation."
-      />
-      <BrutalistAlert
-        type="warning"
-        message="Low fuel warning. Current reserves at 23%."
-      />
-      <BrutalistAlert
-        type="error"
-        message="CRITICAL: Reactor temperature exceeding safe parameters!"
-        :dismissible="false"
-      />
+      <BrutalistAlert type="info" message="System update available. Version 2.4.1 ready for installation." />
+      <BrutalistAlert type="warning" message="Low fuel warning. Current reserves at 23%." />
+      <BrutalistAlert type="error" message="CRITICAL: Reactor temperature exceeding safe parameters!"
+        :dismissible="false" />
     </section>
 
     <!-- Form Demo -->
     <section class="demo-section">
       <h2 class="section-title">BRUTALIST FORM</h2>
-      <BrutalistForm
-        title="NEW CREW REGISTRATION"
-        form-id="NCR-001"
-        @submit="handleFormSubmit"
-      >
-        <BrutalistInput
-          v-model="formData.name"
-          label="FULL NAME"
-          placeholder="Enter crew member name"
-        />
-        <BrutalistSelect
-          v-model="formData.role"
-          label="ASSIGNED ROLE"
-          :options="roleOptions"
-        />
-        <BrutalistInput
-          v-model="formData.experience"
-          label="YEARS EXPERIENCE"
-          type="number"
-        />
+      <BrutalistForm title="NEW CREW REGISTRATION" form-id="NCR-001" @submit="handleFormSubmit">
+        <BrutalistInput v-model="formData.name" label="FULL NAME" placeholder="Enter crew member name" />
+        <BrutalistSelect v-model="formData.role" label="ASSIGNED ROLE" :options="roleOptions" />
+        <BrutalistInput v-model="formData.experience" label="YEARS EXPERIENCE" type="number" />
       </BrutalistForm>
     </section>
 
     <!-- Game Components Demo -->
     <section class="demo-section">
       <h2 class="section-title">GAME-SPECIFIC COMPONENTS</h2>
-      
+
       <div class="component-demo">
         <h3>CREW CARD</h3>
         <div class="crew-grid">
-          <CrewCard
-            v-for="crew in demoCrewMembers"
-            :key="crew.id"
-            :crew-member="crew"
-            @select="handleCrewSelect"
-            @assign="handleCrewAssign"
-            @details="handleCrewDetails"
-          />
+          <CrewCard v-for="crew in demoCrewMembers" :key="crew.id" :crew-member="crew" @select="handleCrewSelect"
+            @assign="handleCrewAssign" @details="handleCrewDetails" />
         </div>
       </div>
 
       <div class="component-demo">
         <h3>TRAINING PANEL</h3>
-        <TrainingPanel
-          :crew="demoCrewMembers"
-          :active-trainings="demoTrainings"
-          @start="handleStartTraining"
-          @pause="handlePauseTraining"
-          @cancel="handleCancelTraining"
-        />
+        <TrainingPanel :crew="demoCrewMembers" :active-trainings="demoTrainings" @start="handleStartTraining"
+          @pause="handlePauseTraining" @cancel="handleCancelTraining" />
       </div>
 
       <div class="component-demo">
         <h3>MISSION BOARD</h3>
-        <MissionBoard
-          :missions="demoMissions"
-          @view="handleViewMission"
-          @accept="handleAcceptMission"
-          @refresh="handleRefreshMissions"
-        />
+        <MissionBoard :missions="demoMissions" @view="handleViewMission" @accept="handleAcceptMission"
+          @refresh="handleRefreshMissions" />
+      </div>
+
+      <div class="component-demo">
+        <h3>HOLD-TO-CONFIRM</h3>
+        <div style="display: flex; gap: 16px; align-items: center;">
+          <HoldToConfirm label="DANGEROUS ACTION" confirm-label="ACTION CONFIRMED" :duration="3000"
+            @confirm="handleDangerousAction" />
+          <HoldToConfirm label="ACCEPT MISSION" confirm-label="MISSION ACCEPTED" :duration="5000"
+            @confirm="handleMissionAccept" />
+        </div>
+      </div>
+
+      <div class="component-demo">
+        <h3>STORY LOG</h3>
+        <div class="story-controls" style="margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
+          <BrutalistButton label="BASIC STORY" @click="loadBasicStory" />
+          <BrutalistButton label="ACTION SEQUENCE" @click="loadActionStory" />
+          <BrutalistButton label="MYSTERY ENCOUNTER" @click="loadMysteryStory" />
+        </div>
+        <StoryLog :title="currentStoryTitle" :timestamp="currentStoryTimestamp" :location="currentStoryLocation"
+          :entries="currentStoryEntries" :show-continue="showStoryContinue" @choice="handleStoryChoice"
+          @continue="handleStoryContinue" />
       </div>
     </section>
   </div>
@@ -195,6 +136,8 @@ import {
   BrutalistProgress,
   BrutalistAlert,
   BrutalistForm,
+  HoldToConfirm,
+  StoryLog,
   CrewCard,
   TrainingPanel,
   MissionBoard
@@ -313,6 +256,144 @@ const demoMissions = [
   }
 ]
 
+const demoStoryEntries = [
+  {
+    type: 'system',
+    text: '**SHIP AI ONLINE** - Docking sequence initiated. Welcome to Kepler Station, Captain. Hull integrity: 97%. Crew status: All hands accounted for.'
+  },
+  {
+    type: 'dialogue',
+    speaker: 'Station Controller',
+    text: 'Unknown vessel... this is Kepler Station Control. Please state your business and prepare for **customs inspection**. We\'ve had... *incidents* lately. Pirates. Smugglers. Worse things.'
+  },
+  {
+    type: 'action',
+    text: 'The massive space station looms ahead, its rotating sections casting long shadows across your ship\'s viewport. Dozens of other vessels drift in designated holding patterns, waiting their turn. You notice several ships bear fresh scorch marks—remnants of recent conflicts in this sector. A destroyed cargo hauler drifts nearby, its hull split open like a broken egg.'
+  },
+  {
+    type: 'dialogue',
+    speaker: 'Navigator Chen',
+    text: 'Captain... I\'m reading some unusual energy signatures from that wreckage. Those aren\'t normal weapon burns. This looks like... **plasma lance** damage. Military grade.'
+  },
+  {
+    type: 'action',
+    text: 'A chill runs down your spine. Plasma lances are restricted weapons, used only by Colonial Navy ships and... other things. Things that shouldn\'t exist in civilized space.'
+  },
+  {
+    type: 'dialogue',
+    speaker: 'Captain',
+    text: 'This is the *Stellar Phoenix*, registry **SP-7741**. We\'re here for resupply and to pick up contracted crew members. Our paperwork should be in order... but I\'m curious about that wreckage.',
+    choices: [
+      { text: 'Ask about the destroyed ship and what happened', value: 'wreckage' },
+      { text: 'Mention the urgent medical supplies you\'re carrying', value: 'medical' },
+      { text: 'Inquire about expedited docking for a premium fee', value: 'premium' },
+      { text: 'Keep quiet about your black market contacts', value: 'discrete' }
+    ]
+  }
+]
+
+// Enhanced story sequences for different moods
+const createActionStorySequence = () => [
+  {
+    type: 'system',
+    text: '**PROXIMITY ALERT** - Unidentified contacts detected. Battle stations! This is not a drill.'
+  },
+  {
+    type: 'dialogue',
+    speaker: 'Marcus Torres',
+    text: 'Captain! Three ships just dropped out of hyperspace behind us. They\'re not responding to hails and their weapons are hot. **Hostile configuration confirmed.**'
+  },
+  {
+    type: 'action',
+    text: 'The bridge lights dim to combat red as klaxons wail throughout the ship. Your crew moves with practiced efficiency, hands flying over controls as they prepare for what might be your last fight. The enemy ships are sleek, predatory—definitely not merchants.'
+  },
+  {
+    type: 'dialogue',
+    speaker: 'Ship AI - ARIA',
+    text: 'Scanning... **Match found.** These vessels are registered to the Crimson Syndicate. Wanted for piracy, murder, and trafficking in seventeen systems. Recommendation: **Immediate evasive action.**'
+  },
+  {
+    type: 'action',
+    text: 'Through the viewports, you can see the pirates\' ships closing in, their hull-mounted railguns already tracking your position. Your ship shudders as they lock targeting sensors onto your hull. Time slows to a crawl as you realize the next few seconds will determine whether you live or die.'
+  },
+  {
+    type: 'dialogue',
+    speaker: 'Captain',
+    text: 'All hands, prepare for combat maneuvers. Sarah, I need maximum power to engines. Marcus, plot us a course through that asteroid field. We\'re going to make them work for this kill.',
+    choices: [
+      { text: 'Fight back with everything you\'ve got', value: 'fight' },
+      { text: 'Attempt to outrun them through the asteroids', value: 'flee' },
+      { text: 'Try to negotiate with the pirates', value: 'negotiate' },
+      { text: 'Send a distress signal to Kepler Station', value: 'distress' }
+    ]
+  }
+]
+
+const createMysteryStorySequence = () => [
+  {
+    type: 'system',
+    text: '**DEEP SPACE ANOMALY DETECTED** - Long-range sensors picking up something... unusual. Classification: Unknown.'
+  },
+  {
+    type: 'action',
+    text: 'The vast emptiness of space stretches before you, broken only by the distant gleam of stars. But there\'s something else out there—something that shouldn\'t exist. Your sensors are going haywire, displaying readings that make no scientific sense.'
+  },
+  {
+    type: 'dialogue',
+    speaker: 'Dr. Yuki Tanaka',
+    text: 'Captain, these readings are... **impossible**. I\'m detecting massive gravitational distortions, but there\'s no visible mass. It\'s as if space itself is... *twisted* out there.'
+  },
+  {
+    type: 'action',
+    text: 'A low, thrumming vibration runs through the ship\'s hull—felt more than heard. The lights flicker momentarily, and several crew members report feeling dizzy. Whatever\'s out there, it\'s affecting your ship from over a million kilometers away.'
+  },
+  {
+    type: 'dialogue',
+    speaker: 'Ship AI - ARIA',
+    text: 'Warning: I am detecting patterns in the anomaly that suggest... **artificial origin**. This is not a natural phenomenon. Recommendation: Maintain safe distance and observe.'
+  },
+  {
+    type: 'action',
+    text: 'But even as ARIA speaks, you feel an inexplicable pull—not physical, but mental. Something about the anomaly calls to you, whispers at the edges of your consciousness. Some of your crew are staring at the viewports with glassy eyes, as if hypnotized.'
+  },
+  {
+    type: 'system',
+    text: 'MULTIPLE CHOICE DECISION POINT: Your actions here will significantly impact your standing with both civilian and military authorities.'
+  }
+]
+
+// Story state management
+const currentStoryTitle = ref('Arrival at Kepler Station')
+const currentStoryTimestamp = ref(new Date())
+const currentStoryLocation = ref('Kepler Station - Approach Vector')
+const currentStoryEntries = ref(demoStoryEntries)
+const showStoryContinue = ref(true)
+
+// Story control functions
+const loadBasicStory = () => {
+  currentStoryTitle.value = 'Arrival at Kepler Station'
+  currentStoryTimestamp.value = new Date()
+  currentStoryLocation.value = 'Kepler Station - Docking Approach'
+  currentStoryEntries.value = [...demoStoryEntries]
+  showStoryContinue.value = true
+}
+
+const loadActionStory = () => {
+  currentStoryTitle.value = 'Pirate Ambush'
+  currentStoryTimestamp.value = new Date(Date.now() - 1800000) // 30 minutes ago
+  currentStoryLocation.value = 'Kepler System - Asteroid Field'
+  currentStoryEntries.value = createActionStorySequence()
+  showStoryContinue.value = false
+}
+
+const loadMysteryStory = () => {
+  currentStoryTitle.value = 'Deep Space Anomaly'
+  currentStoryTimestamp.value = new Date(Date.now() - 7200000) // 2 hours ago
+  currentStoryLocation.value = 'Unknown Coordinates - Deep Space'
+  currentStoryEntries.value = createMysteryStorySequence()
+  showStoryContinue.value = false
+}
+
 // Event handlers
 const handleClick = () => console.log('Button clicked')
 const handleRowSelect = (row) => console.log('Row selected:', row)
@@ -326,6 +407,69 @@ const handleCancelTraining = (id) => console.log('Cancel training:', id)
 const handleViewMission = (id) => console.log('View mission:', id)
 const handleAcceptMission = (id) => console.log('Accept mission:', id)
 const handleRefreshMissions = () => console.log('Refresh missions')
+const handleDangerousAction = () => console.log('Dangerous action confirmed!')
+const handleMissionAccept = () => console.log('Mission accepted via hold-to-confirm!')
+const handleStoryChoice = (choice) => {
+  console.log('Story choice:', choice)
+
+  // Add a response based on the choice made
+  const responseEntry = {
+    type: 'system',
+    text: `**CHOICE SELECTED:** ${choice.text} - Processing consequences...`
+  }
+
+  // Create a new array with the response added
+  currentStoryEntries.value = [...currentStoryEntries.value, responseEntry]
+
+  // Example of branching narrative based on choice
+  setTimeout(() => {
+    let narrativeResponse
+
+    switch (choice.value) {
+      case 'urgent':
+        narrativeResponse = {
+          type: 'dialogue',
+          speaker: 'Station Controller',
+          text: 'Medical cargo? **Priority docking granted.** Proceed to Medical Bay 3. We\'ll have a med-team standing by.'
+        }
+        break
+      case 'incidents':
+        narrativeResponse = {
+          type: 'dialogue',
+          speaker: 'Station Controller',
+          text: '*Static crackles over the comm.* That\'s... classified information, Captain. Please state your business and maintain current position.'
+        }
+        break
+      case 'premium':
+        narrativeResponse = {
+          type: 'dialogue',
+          speaker: 'Station Controller',
+          text: 'Expedited docking is available for an additional **5,000 credits**. Dock 15 is available immediately if you\'re willing to pay.'
+        }
+        break
+      default:
+        narrativeResponse = {
+          type: 'action',
+          text: 'Your silence seems to make the station controller nervous. After a long pause, you hear them shuffling through paperwork.'
+        }
+    }
+
+    currentStoryEntries.value = [...currentStoryEntries.value, narrativeResponse]
+  }, 2000)
+}
+
+const handleStoryContinue = () => {
+  console.log('Story continue clicked')
+
+  // Add a continuation to the story
+  const continueEntry = {
+    type: 'action',
+    text: 'Your ship moves forward through the void, ready for whatever challenges await at Kepler Station. The story continues...'
+  }
+
+  currentStoryEntries.value = [...currentStoryEntries.value, continueEntry]
+  showStoryContinue.value = false
+}
 </script>
 
 <style scoped>
@@ -376,7 +520,7 @@ const handleRefreshMissions = () => console.log('Refresh missions')
 }
 
 /* Global demo styles */
-.demo-section > * {
+.demo-section>* {
   margin-bottom: 12px;
 }
 </style>

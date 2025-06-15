@@ -1,67 +1,35 @@
 <template>
-  <BrutalistPanel
-    title="CREW TRAINING QUEUE"
-    :subtitle="`${activeTrainings.length} ACTIVE`"
-  >
+  <BrutalistPanel title="CREW TRAINING QUEUE" :subtitle="`${activeTrainings.length} ACTIVE`">
     <div class="training-controls">
-      <BrutalistSelect
-        v-model="selectedCrewId"
-        label="SELECT CREW MEMBER"
-        :options="crewOptions"
-        placeholder="-- NO SELECTION --"
-      />
-      
-      <BrutalistSelect
-        v-model="selectedSkill"
-        label="TRAINING PROGRAM"
-        :options="skillOptions"
-        :disabled="!selectedCrewId"
-        placeholder="-- SELECT SKILL --"
-      />
-      
-      <BrutalistButton
-        label="INITIATE TRAINING"
-        :disabled="!canStartTraining"
-        @click="startTraining"
-      />
+      <BrutalistSelect v-model="selectedCrewId" label="SELECT CREW MEMBER" :options="crewOptions"
+        placeholder="-- NO SELECTION --" />
+
+      <BrutalistSelect v-model="selectedSkill" label="TRAINING PROGRAM" :options="skillOptions"
+        :disabled="!selectedCrewId" placeholder="-- SELECT SKILL --" />
+
+      <BrutalistButton label="INITIATE TRAINING" :disabled="!canStartTraining" @click="startTraining" />
     </div>
 
     <div class="training-queue">
       <div class="queue-header">ACTIVE TRAINING SESSIONS:</div>
-      
+
       <div v-if="activeTrainings.length === 0" class="empty-queue">
         NO ACTIVE TRAINING PROGRAMS
       </div>
-      
-      <div
-        v-for="training in activeTrainings"
-        :key="training.id"
-        class="training-item"
-      >
+
+      <div v-for="training in activeTrainings" :key="training.id" class="training-item">
         <div class="training-info">
           <span class="crew-name">{{ training.crewName }}</span>
           <span class="skill-name">{{ training.skill }}</span>
           <span class="training-status">{{ getStatus(training) }}</span>
         </div>
-        
-        <BrutalistProgress
-          :value="training.progress"
-          :label="training.skill"
-          :status="training.eta"
-          :variant="getProgressVariant(training)"
-        />
-        
+
+        <BrutalistProgress :value="training.progress" :label="training.skill" :status="training.eta"
+          :variant="getProgressVariant(training)" />
+
         <div class="training-actions">
-          <BrutalistButton
-            label="PAUSE"
-            :disabled="training.paused"
-            @click="$emit('pause', training.id)"
-          />
-          <BrutalistButton
-            label="CANCEL"
-            variant="danger"
-            @click="$emit('cancel', training.id)"
-          />
+          <BrutalistButton label="PAUSE" :disabled="training.paused" @click="$emit('pause', training.id)" />
+          <BrutalistButton label="CANCEL" variant="danger" @click="$emit('cancel', training.id)" />
         </div>
       </div>
     </div>
@@ -177,7 +145,7 @@ const getProgressVariant = (training) => {
   gap: 8px;
   margin-bottom: 16px;
   padding-bottom: 16px;
-  border-bottom: 1px dashed #00ff00;
+  border-bottom: 1px dashed #ffffff;
 }
 
 .training-queue {
@@ -185,25 +153,25 @@ const getProgressVariant = (training) => {
 }
 
 .queue-header {
-  color: #00ff00;
+  color: #ffffff;
   font-weight: bold;
   margin-bottom: 8px;
   padding-bottom: 4px;
-  border-bottom: 1px solid #00ff00;
+  border-bottom: 1px solid #ffffff;
 }
 
 .empty-queue {
   text-align: center;
   padding: 24px;
   opacity: 0.5;
-  border: 1px dashed #003300;
+  border: 1px dashed #333333;
 }
 
 .training-item {
-  border: 1px solid #00ff00;
+  border: 1px solid #ffffff;
   padding: 8px;
   margin-bottom: 8px;
-  background: #001100;
+  background: #111111;
 }
 
 .training-info {
@@ -218,7 +186,7 @@ const getProgressVariant = (training) => {
 }
 
 .skill-name {
-  color: #00ff00;
+  color: #ffffff;
   opacity: 0.8;
 }
 
@@ -238,13 +206,13 @@ const getProgressVariant = (training) => {
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   padding-top: 16px;
-  border-top: 1px solid #00ff00;
+  border-top: 1px solid #ffffff;
 }
 
 .stat-item {
   text-align: center;
   font-size: 11px;
-  color: #00ff00;
+  color: #ffffff;
   opacity: 0.8;
 }
 </style>

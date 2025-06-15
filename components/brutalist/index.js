@@ -7,6 +7,8 @@ export { default as BrutalistTable } from './BrutalistTable.vue'
 export { default as BrutalistProgress } from './BrutalistProgress.vue'
 export { default as BrutalistAlert } from './BrutalistAlert.vue'
 export { default as BrutalistForm } from './BrutalistForm.vue'
+export { default as HoldToConfirm } from './HoldToConfirm.vue'
+export { default as StoryLog } from './StoryLog.vue'
 
 // Game-specific components
 export { default as TrainingPanel } from './TrainingPanel.vue'

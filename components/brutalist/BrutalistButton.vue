@@ -1,15 +1,10 @@
 <template>
-  <button
-    class="brutalist-button"
-    :class="{
-      'button-disabled': disabled,
-      'button-processing': processing,
-      'button-danger': variant === 'danger',
-      'button-primary': variant === 'primary'
-    }"
-    :disabled="disabled || processing"
-    @click="handleClick"
-  >
+  <button class="brutalist-button" :class="{
+    'button-disabled': disabled,
+    'button-processing': processing,
+    'button-danger': variant === 'danger',
+    'button-primary': variant === 'primary'
+  }" :disabled="disabled || processing" @click="handleClick">
     <span v-if="processing" class="processing-indicator">[PROCESSING]</span>
     <span v-else>
       <span class="button-brackets">[</span>
@@ -43,8 +38,8 @@ const handleClick = (event) => {
 <style scoped>
 .brutalist-button {
   background: #000000;
-  color: #00ff00;
-  border: 1px solid #00ff00;
+  color: #ffffff;
+  border: 1px solid #ffffff;
   font-family: 'Courier New', monospace;
   font-size: 14px;
   padding: 4px 8px;
@@ -55,8 +50,10 @@ const handleClick = (event) => {
 }
 
 .brutalist-button:hover:not(.button-disabled):not(.button-processing) {
-  background: #00ff00;
+  background: #ffffff;
   color: #000000;
+  /* Ensure visibility on both light and dark backgrounds */
+  border-color: #ffffff;
 }
 
 .brutalist-button:active:not(.button-disabled):not(.button-processing) {
@@ -97,7 +94,15 @@ const handleClick = (event) => {
 }
 
 @keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0.3; }
+
+  0%,
+  50% {
+    opacity: 1;
+  }
+
+  51%,
+  100% {
+    opacity: 0.3;
+  }
 }
 </style>

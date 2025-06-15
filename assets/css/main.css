@@ -1,3 +1,116 @@
+ 
+/* Import IBM Plex Sans for narrative content */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap');
+ 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Import IBM Plex Sans for narrative content */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap');
+
+/* Monaspace Nerd Font Face Declarations */
+@font-face {
+  font-family: 'MonaspiceNe';
+  src: url('/fonts/Monaspace/MonaspiceNeNerdFont-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'MonaspiceNe';
+  src: url('/fonts/Monaspace/MonaspiceNeNerdFont-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'MonaspiceNe';
+  src: url('/fonts/Monaspace/MonaspiceNeNerdFont-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'MonaspiceNeMono';
+  src: url('/fonts/Monaspace/MonaspiceNeNerdFontMono-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'MonaspiceNeMono';
+  src: url('/fonts/Monaspace/MonaspiceNeNerdFontMono-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'MonaspiceNeMono';
+  src: url('/fonts/Monaspace/MonaspiceNeNerdFontMono-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* Krypton variant for headers */
+@font-face {
+  font-family: 'MonaspiceKr';
+  src: url('/fonts/Monaspace/MonaspiceKrNerdFont-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'MonaspiceKr';
+  src: url('/fonts/Monaspace/MonaspiceKrNerdFont-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* Xenon variant for special effects */
+@font-face {
+  font-family: 'MonaspiceXe';
+  src: url('/fonts/Monaspace/MonaspiceXeNerdFont-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'MonaspiceXe';
+  src: url('/fonts/Monaspace/MonaspiceXeNerdFont-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* CSS Custom Properties for Font Stacks */
+:root {
+  --font-mono: 'MonaspiceNeMono', 'Courier New', monospace;
+  --font-ui: 'MonaspiceNe', 'MonaspiceNeMono', monospace;
+  --font-headers: 'MonaspiceKr', 'MonaspiceNe', monospace;
+  --font-special: 'MonaspiceXe', 'MonaspiceNe', monospace;
+  --font-narrative: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  
+  /* Nerd Font Icon Variables for easy access */
+  --icon-terminal: "";
+  --icon-rocket: "";
+  --icon-star: "";
+  --icon-clock: "";
+  --icon-credits: "";
+  --icon-shield: "";
+  --icon-warning: "";
+  --icon-check: "";
+  --icon-x: "";
+  --icon-fire: "";
+  --icon-zap: "";
+  --icon-target: "";
+  --icon-user: "";
+  --icon-users: "";
+  --icon-cog: "";
+  --icon-chevron-right: "";
+  --icon-chevron-down: "";
+  --icon-arrow-right: "";
+  --icon-database: "";
+  --icon-cpu: "";
+  --icon-memory: "";
+  --icon-network: "";
+}

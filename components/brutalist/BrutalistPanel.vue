@@ -25,9 +25,9 @@ defineProps({
 
 <style scoped>
 .brutalist-panel {
-  border: 2px solid #00ff00;
+  border: 2px solid #ffffff;
   background: #000000;
-  color: #00ff00;
+  color: #ffffff;
   font-family: 'Courier New', monospace;
   margin: 4px;
   display: inline-block;
@@ -40,7 +40,7 @@ defineProps({
 }
 
 .panel-header {
-  border-bottom: 1px solid #00ff00;
+  border-bottom: 1px solid #ffffff;
   padding: 4px 8px;
   font-weight: bold;
   white-space: nowrap;
@@ -63,7 +63,7 @@ defineProps({
 }
 
 .panel-footer {
-  border-top: 1px solid #00ff00;
+  border-top: 1px solid #ffffff;
   padding: 4px 8px;
   font-size: 0.85em;
   opacity: 0.7;

@@ -1,23 +1,19 @@
 <template>
-  <div
-    class="crew-card"
-    :class="{
-      'card-selected': selected,
-      'card-unavailable': !crewMember.available,
-      'card-stressed': crewMember.stress > 75
-    }"
-    @click="$emit('select', crewMember.id)"
-  >
+  <div class="crew-card" :class="{
+    'card-selected': selected,
+    'card-unavailable': !crewMember.available,
+    'card-stressed': crewMember.stress > 75
+  }" @click="$emit('select', crewMember.id)">
     <div class="card-header">
       <span class="crew-name">{{ crewMember.name }}</span>
       <span class="crew-id">#{{ crewMember.id.slice(0, 8) }}</span>
     </div>
-    
+
     <div class="card-body">
       <div class="crew-role">
         {{ crewMember.role.toUpperCase() }}
       </div>
-      
+
       <div class="crew-stats">
         <div class="stat">
           <span class="stat-label">LVL:</span>
@@ -34,52 +30,42 @@
           </span>
         </div>
       </div>
-      
+
       <div class="crew-status">
         <div class="status-item">
-          STRESS: 
+          STRESS:
           <span :class="getStressClass(crewMember.stress)">
             {{ getStressBar(crewMember.stress) }}
           </span>
         </div>
         <div class="status-item">
-          HEALTH: 
+          HEALTH:
           <span :class="getHealthClass(crewMember.health)">
             {{ getHealthStatus(crewMember.health) }}
           </span>
         </div>
       </div>
-      
+
       <div v-if="crewMember.traits.length" class="crew-traits">
-        <span
-          v-for="trait in crewMember.traits.slice(0, 3)"
-          :key="trait"
-          class="trait-badge"
-        >
+        <span v-for="trait in crewMember.traits.slice(0, 3)" :key="trait" class="trait-badge">
           {{ trait }}
         </span>
         <span v-if="crewMember.traits.length > 3" class="trait-more">
           +{{ crewMember.traits.length - 3 }}
         </span>
       </div>
-      
+
       <div v-if="crewMember.currentTask" class="current-task">
         <span class="task-label">CURRENT:</span>
         <span class="task-name">{{ crewMember.currentTask }}</span>
       </div>
     </div>
-    
+
     <div v-if="showActions" class="card-actions">
-      <button
-        class="action-btn"
-        @click.stop="$emit('assign', crewMember.id)"
-      >
+      <button class="action-btn" @click.stop="$emit('assign', crewMember.id)">
         [ASSIGN]
       </button>
-      <button
-        class="action-btn"
-        @click.stop="$emit('details', crewMember.id)"
-      >
+      <button class="action-btn" @click.stop="$emit('details', crewMember.id)">
         [INFO]
       </button>
     </div>
@@ -136,9 +122,9 @@ const getHealthStatus = (health) => {
 
 <style scoped>
 .crew-card {
-  border: 1px solid #00ff00;
+  border: 1px solid #ffffff;
   background: #000000;
-  color: #00ff00;
+  color: #ffffff;
   font-family: 'Courier New', monospace;
   padding: 8px;
   cursor: pointer;
@@ -147,14 +133,14 @@ const getHealthStatus = (health) => {
 }
 
 .crew-card:hover {
-  background: #001100;
-  border-color: #00ff00;
-  box-shadow: 0 0 0 1px #00ff00;
+  background: #111111;
+  border-color: #ffffff;
+  box-shadow: 0 0 0 1px #ffffff;
 }
 
 .card-selected {
-  background: #002200;
-  border-color: #00ff00;
+  background: #222222;
+  border-color: #ffffff;
   border-width: 2px;
 }
 
@@ -173,7 +159,7 @@ const getHealthStatus = (health) => {
   justify-content: space-between;
   margin-bottom: 4px;
   padding-bottom: 4px;
-  border-bottom: 1px dotted #003300;
+  border-bottom: 1px dotted #333333;
 }
 
 .crew-name {
@@ -191,7 +177,7 @@ const getHealthStatus = (health) => {
 }
 
 .crew-role {
-  color: #00ffff;
+  color: #ffffff;
   margin-bottom: 4px;
   font-size: 12px;
 }
@@ -202,8 +188,8 @@ const getHealthStatus = (health) => {
   gap: 4px;
   margin-bottom: 6px;
   padding: 4px;
-  background: #001100;
-  border: 1px dotted #003300;
+  background: #111111;
+  border: 1px dotted #333333;
 }
 
 .stat {
@@ -219,9 +205,17 @@ const getHealthStatus = (health) => {
   font-weight: bold;
 }
 
-.morale-high { color: #00ff00; }
-.morale-medium { color: #ffff00; }
-.morale-low { color: #ff0000; }
+.morale-high {
+  color: #00ff00;
+}
+
+.morale-medium {
+  color: #ffaa00;
+}
+
+.morale-low {
+  color: #ff0000;
+}
 
 .crew-status {
   margin-bottom: 6px;
@@ -232,13 +226,29 @@ const getHealthStatus = (health) => {
   margin-bottom: 2px;
 }
 
-.stress-low { color: #00ff00; }
-.stress-medium { color: #ffff00; }
-.stress-high { color: #ff0000; }
+.stress-low {
+  color: #00ff00;
+}
 
-.health-good { color: #00ff00; }
-.health-fair { color: #ffff00; }
-.health-poor { color: #ff0000; }
+.stress-medium {
+  color: #ffaa00;
+}
+
+.stress-high {
+  color: #ff0000;
+}
+
+.health-good {
+  color: #00ff00;
+}
+
+.health-fair {
+  color: #ffaa00;
+}
+
+.health-poor {
+  color: #ff0000;
+}
 
 .crew-traits {
   display: flex;
@@ -248,15 +258,15 @@ const getHealthStatus = (health) => {
 }
 
 .trait-badge {
-  background: #002200;
-  border: 1px solid #00ff00;
+  background: #222222;
+  border: 1px solid #ffffff;
   padding: 1px 4px;
   font-size: 9px;
   text-transform: uppercase;
 }
 
 .trait-more {
-  color: #00ff00;
+  color: #ffffff;
   opacity: 0.6;
   font-size: 9px;
   padding: 1px 4px;
@@ -265,8 +275,8 @@ const getHealthStatus = (health) => {
 .current-task {
   font-size: 10px;
   padding: 4px;
-  background: #110011;
-  border: 1px dotted #ff00ff;
+  background: #111111;
+  border: 1px dotted #ffffff;
   margin-bottom: 6px;
 }
 
@@ -276,21 +286,21 @@ const getHealthStatus = (health) => {
 }
 
 .task-name {
-  color: #ff00ff;
+  color: #ffffff;
 }
 
 .card-actions {
   display: flex;
   gap: 4px;
   padding-top: 6px;
-  border-top: 1px dotted #003300;
+  border-top: 1px dotted #333333;
 }
 
 .action-btn {
   flex: 1;
   background: none;
-  border: 1px solid #00ff00;
-  color: #00ff00;
+  border: 1px solid #ffffff;
+  color: #ffffff;
   font-family: 'Courier New', monospace;
   font-size: 10px;
   padding: 2px 4px;
@@ -299,12 +309,19 @@ const getHealthStatus = (health) => {
 }
 
 .action-btn:hover {
-  background: #00ff00;
+  background: #ffffff;
   color: #000000;
 }
 
 @keyframes stress-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
 }
 </style>

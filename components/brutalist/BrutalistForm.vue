@@ -1,39 +1,22 @@
 <template>
-  <form
-    class="brutalist-form"
-    :class="{ 'form-processing': processing }"
-    @submit.prevent="handleSubmit"
-  >
+  <form class="brutalist-form" :class="{ 'form-processing': processing }" @submit.prevent="handleSubmit">
     <div v-if="title" class="form-header">
       <span class="header-marker">&gt;&gt;</span>
       {{ title.toUpperCase() }}
       <span v-if="formId" class="form-id">[FORM:{{ formId }}]</span>
     </div>
-    
+
     <div class="form-content">
       <slot></slot>
     </div>
-    
+
     <div v-if="showActions" class="form-actions">
-      <BrutalistButton
-        v-if="!hideCancel"
-        label="CANCEL"
-        @click="$emit('cancel')"
-      />
-      <BrutalistButton
-        v-if="!hideReset"
-        label="RESET"
-        @click="handleReset"
-      />
-      <BrutalistButton
-        :label="submitLabel"
-        :processing="processing"
-        :disabled="disabled"
-        variant="primary"
-        type="submit"
-      />
+      <BrutalistButton v-if="!hideCancel" label="CANCEL" @click="$emit('cancel')" />
+      <BrutalistButton v-if="!hideReset" label="RESET" @click="handleReset" />
+      <BrutalistButton :label="submitLabel" :processing="processing" :disabled="disabled" variant="primary"
+        type="submit" />
     </div>
-    
+
     <div v-if="errors.length" class="form-errors">
       <div class="error-header">FORM ERRORS:</div>
       <ul class="error-list">
@@ -84,9 +67,9 @@ const handleReset = () => {
 
 <style scoped>
 .brutalist-form {
-  border: 2px solid #00ff00;
+  border: 2px solid #ffffff;
   background: #000000;
-  color: #00ff00;
+  color: #ffffff;
   font-family: 'Courier New', monospace;
   margin: 4px 0;
 }
@@ -97,7 +80,7 @@ const handleReset = () => {
 }
 
 .form-header {
-  border-bottom: 1px solid #00ff00;
+  border-bottom: 1px solid #ffffff;
   padding: 8px;
   font-weight: bold;
   display: flex;
@@ -121,12 +104,12 @@ const handleReset = () => {
 }
 
 .form-actions {
-  border-top: 1px solid #00ff00;
+  border-top: 1px solid #ffffff;
   padding: 8px;
   display: flex;
   gap: 8px;
   justify-content: flex-end;
-  background: #001100;
+  background: #111111;
 }
 
 .form-errors {
@@ -161,11 +144,11 @@ const handleReset = () => {
 }
 
 /* Nested form field spacing */
-.form-content > * {
+.form-content>* {
   margin-bottom: 12px;
 }
 
-.form-content > *:last-child {
+.form-content>*:last-child {
   margin-bottom: 0;
 }
 </style>

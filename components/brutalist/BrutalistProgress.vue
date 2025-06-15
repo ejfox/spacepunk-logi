@@ -6,15 +6,11 @@
     </div>
     <div class="progress-container">
       <div class="progress-track">
-        <div
-          class="progress-fill"
-          :class="{
-            'fill-danger': variant === 'danger',
-            'fill-warning': variant === 'warning',
-            'fill-success': variant === 'success'
-          }"
-          :style="{ width: fillWidth }"
-        >
+        <div class="progress-fill" :class="{
+          'fill-danger': variant === 'danger',
+          'fill-warning': variant === 'warning',
+          'fill-success': variant === 'success'
+        }" :style="{ width: fillWidth }">
           <span v-if="showBar" class="progress-bar">{{ progressBar }}</span>
         </div>
       </div>
@@ -74,7 +70,7 @@ const progressBar = computed(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #00ff00;
+  color: #ffffff;
   font-family: 'Courier New', monospace;
   font-size: 12px;
   margin-bottom: 2px;
@@ -90,7 +86,7 @@ const progressBar = computed(() => {
 }
 
 .progress-container {
-  border: 1px solid #00ff00;
+  border: 1px solid #ffffff;
   background: #000000;
   height: 16px;
   position: relative;
@@ -104,7 +100,7 @@ const progressBar = computed(() => {
 
 .progress-fill {
   height: 100%;
-  background: #00ff00;
+  background: #ffffff;
   transition: width 0.3s ease;
   position: relative;
   overflow: hidden;
@@ -115,7 +111,7 @@ const progressBar = computed(() => {
 }
 
 .fill-warning {
-  background: #ffff00;
+  background: #ffaa00;
 }
 
 .fill-success {
@@ -135,7 +131,7 @@ const progressBar = computed(() => {
 }
 
 .progress-status {
-  color: #00ff00;
+  color: #ffffff;
   font-family: 'Courier New', monospace;
   font-size: 11px;
   margin-top: 2px;
@@ -144,8 +140,15 @@ const progressBar = computed(() => {
 
 /* Animation for active progress */
 @keyframes progress-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .progress-fill {

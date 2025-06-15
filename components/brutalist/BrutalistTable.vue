@@ -7,12 +7,8 @@
       <table class="brutalist-table">
         <thead v-if="headers && headers.length">
           <tr>
-            <th
-              v-for="(header, index) in headers"
-              :key="index"
-              :class="{ 'sortable': header.sortable }"
-              @click="header.sortable && $emit('sort', header.key)"
-            >
+            <th v-for="(header, index) in headers" :key="index" :class="{ 'sortable': header.sortable }"
+              @click="header.sortable && $emit('sort', header.key)">
               {{ (header.label || header.key).toUpperCase() }}
               <span v-if="header.sortable" class="sort-indicator">
                 {{ sortKey === header.key ? (sortOrder === 'asc' ? '▲' : '▼') : '◆' }}
@@ -26,17 +22,9 @@
               {{ emptyMessage || 'NO DATA AVAILABLE' }}
             </td>
           </tr>
-          <tr
-            v-for="(row, rowIndex) in data"
-            :key="rowIndex"
-            :class="{ 'row-selected': isSelected(row) }"
-            @click="selectable && $emit('select', row)"
-          >
-            <td
-              v-for="(header, colIndex) in headers"
-              :key="colIndex"
-              :class="getCellClass(header, row[header.key])"
-            >
+          <tr v-for="(row, rowIndex) in data" :key="rowIndex" :class="{ 'row-selected': isSelected(row) }"
+            @click="selectable && $emit('select', row)">
+            <td v-for="(header, colIndex) in headers" :key="colIndex" :class="getCellClass(header, row[header.key])">
               <slot :name="`cell-${header.key}`" :value="row[header.key]" :row="row">
                 {{ formatCellValue(row[header.key], header.format) }}
               </slot>
@@ -85,7 +73,7 @@ const props = defineProps({
 defineEmits(['select', 'sort'])
 
 const isSelected = (row) => {
-  return props.selectedRows.some(selected => 
+  return props.selectedRows.some(selected =>
     JSON.stringify(selected) === JSON.stringify(row)
   )
 }
@@ -99,7 +87,7 @@ const getCellClass = (header, value) => {
 
 const formatCellValue = (value, format) => {
   if (value === null || value === undefined) return '-'
-  
+
   switch (format) {
     case 'number':
       return typeof value === 'number' ? value.toLocaleString() : value
@@ -121,7 +109,7 @@ const formatCellValue = (value, format) => {
 }
 
 .table-title {
-  color: #00ff00;
+  color: #ffffff;
   font-family: 'Courier New', monospace;
   font-size: 14px;
   font-weight: bold;
@@ -129,14 +117,14 @@ const formatCellValue = (value, format) => {
 }
 
 .table-container {
-  border: 1px solid #00ff00;
+  border: 1px solid #ffffff;
   overflow-x: auto;
 }
 
 .brutalist-table {
   width: 100%;
   background: #000000;
-  color: #00ff00;
+  color: #ffffff;
   font-family: 'Courier New', monospace;
   font-size: 12px;
   border-collapse: collapse;
@@ -145,8 +133,8 @@ const formatCellValue = (value, format) => {
 th {
   text-align: left;
   padding: 4px 8px;
-  border-bottom: 1px solid #00ff00;
-  background: #001100;
+  border-bottom: 1px solid #ffffff;
+  background: #111111;
   white-space: nowrap;
 }
 
@@ -156,7 +144,7 @@ th.sortable {
 }
 
 th.sortable:hover {
-  background: #002200;
+  background: #222222;
 }
 
 .sort-indicator {
@@ -167,7 +155,7 @@ th.sortable:hover {
 
 td {
   padding: 4px 8px;
-  border-bottom: 1px dotted #003300;
+  border-bottom: 1px dotted #333333;
 }
 
 tr:last-child td {
@@ -175,11 +163,11 @@ tr:last-child td {
 }
 
 tr:hover:not(:has(.empty-message)) {
-  background: #001100;
+  background: #111111;
 }
 
 .row-selected {
-  background: #002200 !important;
+  background: #222222 !important;
 }
 
 .selectable {
@@ -201,18 +189,18 @@ tr:hover:not(:has(.empty-message)) {
 }
 
 .cell-highlight {
-  color: #00ff00;
+  color: #ffffff;
   font-weight: bold;
 }
 
 .table-footer {
-  color: #00ff00;
+  color: #ffffff;
   font-family: 'Courier New', monospace;
   font-size: 11px;
   padding: 4px 8px;
-  border: 1px solid #00ff00;
+  border: 1px solid #ffffff;
   border-top: none;
-  background: #001100;
+  background: #111111;
   opacity: 0.7;
 }
 </style>

@@ -5,23 +5,12 @@
     </label>
     <div class="input-container">
       <span class="input-marker">></span>
-      <input
-        :type="type"
-        :value="modelValue"
-        :placeholder="placeholder"
-        :disabled="disabled"
-        :readonly="readonly"
-        :maxlength="maxlength"
-        class="brutalist-input"
-        :class="{
+      <input :type="type" :value="modelValue" :placeholder="placeholder" :disabled="disabled" :readonly="readonly"
+        :maxlength="maxlength" class="brutalist-input" :class="{
           'input-error': error,
           'input-valid': valid && !error,
           'input-disabled': disabled
-        }"
-        @input="$emit('update:modelValue', $event.target.value)"
-        @focus="$emit('focus')"
-        @blur="$emit('blur')"
-      />
+        }" @input="$emit('update:modelValue', $event.target.value)" @focus="$emit('focus')" @blur="$emit('blur')" />
     </div>
     <div v-if="error && errorMessage" class="input-error-message">
       ERROR: {{ errorMessage }}
@@ -60,7 +49,7 @@ defineEmits(['update:modelValue', 'focus', 'blur'])
 
 .input-label {
   display: block;
-  color: #00ff00;
+  color: #ffffff;
   font-family: 'Courier New', monospace;
   font-size: 12px;
   margin-bottom: 2px;
@@ -72,7 +61,7 @@ defineEmits(['update:modelValue', 'focus', 'blur'])
 }
 
 .input-marker {
-  color: #00ff00;
+  color: #ffffff;
   font-family: 'Courier New', monospace;
   margin-right: 4px;
 }
@@ -80,8 +69,8 @@ defineEmits(['update:modelValue', 'focus', 'blur'])
 .brutalist-input {
   flex: 1;
   background: #000000;
-  color: #00ff00;
-  border: 1px solid #00ff00;
+  color: #ffffff;
+  border: 1px solid #ffffff;
   font-family: 'Courier New', monospace;
   font-size: 14px;
   padding: 4px;
@@ -89,8 +78,8 @@ defineEmits(['update:modelValue', 'focus', 'blur'])
 }
 
 .brutalist-input:focus {
-  border-color: #00ff00;
-  box-shadow: 0 0 0 1px #00ff00;
+  border-color: #ffffff;
+  box-shadow: 0 0 0 1px #ffffff;
 }
 
 .input-error {
@@ -120,14 +109,14 @@ defineEmits(['update:modelValue', 'focus', 'blur'])
 }
 
 .input-hint {
-  color: #00ff00;
+  color: #ffffff;
   font-family: 'Courier New', monospace;
   font-size: 12px;
   margin-top: 2px;
   opacity: 0.7;
 }
 
-.input-error ~ .input-marker {
+.input-error~.input-marker {
   color: #ff0000;
 }
 </style>
