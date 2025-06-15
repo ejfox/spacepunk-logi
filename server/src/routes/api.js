@@ -4,11 +4,13 @@ import { PlayerRepository } from '../repositories/PlayerRepository.js';
 import { ShipRepository } from '../repositories/ShipRepository.js';
 import { CrewRepository } from '../repositories/CrewRepository.js';
 import { query } from '../db/index.js';
+import TrainingService from '../services/TrainingService.js';
 
 const router = express.Router();
 const playerRepo = new PlayerRepository();
 const shipRepo = new ShipRepository();
 const crewRepo = new CrewRepository();
+const trainingService = new TrainingService();
 
 // Create new player and starting ship
 router.post('/player/create', async (req, res) => {
@@ -146,6 +148,78 @@ router.get('/ship/:shipId/status', async (req, res) => {
   } catch (error) {
     console.error('Error fetching ship status:', error);
     res.status(500).json({ error: 'Failed to fetch ship status' });
+  }
+});
+
+// Training queue endpoints
+router.get('/ship/:shipId/training-queue', async (req, res) => {
+  try {
+    const { shipId } = req.params;
+    const queue = await trainingService.getShipTrainingQueue(shipId);
+    res.json(queue);
+  } catch (error) {
+    console.error('Error fetching training queue:', error);
+    res.status(500).json({ error: 'Failed to fetch training queue' });
+  }
+});
+
+router.get('/crew/:crewId/available-programs', async (req, res) => {
+  try {
+    const { crewId } = req.params;
+    const programs = await trainingService.getAvailablePrograms(crewId);
+    res.json(programs);
+  } catch (error) {
+    console.error('Error fetching available programs:', error);
+    res.status(500).json({ error: 'Failed to fetch available programs' });
+  }
+});
+
+router.post('/training/enroll', async (req, res) => {
+  try {
+    const { crewMemberId, trainingProgramId, shipId } = req.body;
+    
+    if (!crewMemberId || !trainingProgramId || !shipId) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    const enrollment = await trainingService.enrollInTraining(
+      crewMemberId, 
+      trainingProgramId, 
+      shipId
+    );
+    
+    res.json({ 
+      success: true, 
+      enrollment,
+      creditsSpent: enrollment.credits_paid
+    });
+  } catch (error) {
+    console.error('Error enrolling in training:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.post('/training/:trainingId/cancel', async (req, res) => {
+  try {
+    const { trainingId } = req.params;
+    const { reason } = req.body;
+    
+    await trainingService.cancelTraining(trainingId, reason);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error cancelling training:', error);
+    res.status(500).json({ error: 'Failed to cancel training' });
+  }
+});
+
+router.get('/crew/:crewId/training-history', async (req, res) => {
+  try {
+    const { crewId } = req.params;
+    const history = await trainingService.getCrewTrainingHistory(crewId);
+    res.json(history);
+  } catch (error) {
+    console.error('Error fetching training history:', error);
+    res.status(500).json({ error: 'Failed to fetch training history' });
   }
 });
 

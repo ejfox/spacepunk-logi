@@ -58,6 +58,9 @@
           <button @click="activeTab = 'status'" :class="{ active: activeTab === 'status' }">
             SHIP SYSTEMS
           </button>
+          <button @click="activeTab = 'training'" :class="{ active: activeTab === 'training' }">
+            TRAINING
+          </button>
         </div>
       </div>
 
@@ -112,6 +115,18 @@
         <p>Last maintenance: Never</p>
         <p>Next scheduled maintenance: Overdue</p>
       </div>
+
+      <div v-if="activeTab === 'training'" class="section">
+        <TrainingQueue 
+          v-if="ship?.id" 
+          :ship-id="ship.id"
+          :crew="crew"
+          :credits="player?.credits || 0"
+          ref="trainingQueueRef"
+          @training-event="handleTrainingEvent"
+          @credits-changed="handleCreditsChanged"
+        />
+      </div>
     </div>
 
     <!-- Message Log -->
@@ -137,6 +152,7 @@ const messages = ref([])
 const activeTab = ref('crew')
 const showHiring = ref(false)
 const isLoading = ref(false)
+const trainingQueueRef = ref(null)
 
 // Login form data
 const username = ref('')
@@ -205,6 +221,14 @@ function handleWebSocketMessage(data) {
       
     case 'crew:update':
       crew.value = data.data
+      break
+      
+    case 'training:progress':
+      addMessage(`Training update: ${data.data.crewName} - ${data.data.event}`)
+      // Update training queue if component exists
+      if (trainingQueueRef.value) {
+        trainingQueueRef.value.handleTrainingProgress(data.data)
+      }
       break
   }
 }
@@ -300,6 +324,30 @@ function addMessage(text) {
 
 function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString()
+}
+
+function handleTrainingEvent(event) {
+  switch (event.type) {
+    case 'queue_refreshed':
+      addMessage(`Training queue updated (${event.count} active programs)`)
+      break
+    case 'crew_enrolled':
+      addMessage(`Crew member enrolled in training program`)
+      break
+    case 'training_cancelled':
+      addMessage(`Training program cancelled`)
+      break
+    default:
+      console.log('Unknown training event:', event)
+  }
+}
+
+function handleCreditsChanged(amount) {
+  // Update player credits when training costs are deducted
+  if (player.value) {
+    player.value.credits -= amount
+    addMessage(`Training fee deducted: ${amount} CR`)
+  }
 }
 </script>
 
