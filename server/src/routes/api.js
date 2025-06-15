@@ -4,6 +4,7 @@ import { PlayerRepository } from '../repositories/PlayerRepository.js';
 import { ShipRepository } from '../repositories/ShipRepository.js';
 import { CrewRepository } from '../repositories/CrewRepository.js';
 import { MarketRepository } from '../repositories/MarketRepository.js';
+import { MissionRepository } from '../repositories/MissionRepository.js';
 import { query } from '../db/index.js';
 
 const router = express.Router();
@@ -11,6 +12,7 @@ const playerRepo = new PlayerRepository();
 const shipRepo = new ShipRepository();
 const crewRepo = new CrewRepository();
 const marketRepo = new MarketRepository();
+const missionRepo = new MissionRepository();
 
 // Create new player and starting ship
 router.post('/player/create', async (req, res) => {
@@ -157,6 +159,113 @@ router.get('/market/trends/:stationId/:resourceId', async (req, res) => {
   } catch (error) {
     console.error('Error fetching market trends:', error);
     res.status(500).json({ error: 'Failed to fetch market trends' });
+  }
+});
+
+// Get available missions
+router.get('/missions/available', async (req, res) => {
+  try {
+    const { stationId, limit = 10, type, difficulty } = req.query;
+    
+    let missions;
+    if (type) {
+      missions = await missionRepo.findByType(type, limit);
+    } else if (difficulty) {
+      missions = await missionRepo.findByDifficulty(difficulty, limit);
+    } else {
+      missions = await missionRepo.findAvailable(limit, stationId);
+    }
+    
+    res.json(missions);
+  } catch (error) {
+    console.error('Error fetching available missions:', error);
+    res.status(500).json({ error: 'Failed to fetch missions' });
+  }
+});
+
+// Get mission details
+router.get('/missions/:missionId', async (req, res) => {
+  try {
+    const { missionId } = req.params;
+    const mission = await missionRepo.findById(missionId);
+    
+    if (!mission) {
+      return res.status(404).json({ error: 'Mission not found' });
+    }
+    
+    res.json(mission);
+  } catch (error) {
+    console.error('Error fetching mission:', error);
+    res.status(500).json({ error: 'Failed to fetch mission details' });
+  }
+});
+
+// Accept a mission
+router.post('/missions/:missionId/accept', async (req, res) => {
+  try {
+    const { missionId } = req.params;
+    const { playerId, shipId } = req.body;
+    
+    if (!playerId || !shipId) {
+      return res.status(400).json({ error: 'Player ID and Ship ID required' });
+    }
+    
+    const mission = await missionRepo.acceptMission(missionId, playerId, shipId);
+    
+    res.json({
+      message: 'Mission accepted successfully',
+      mission
+    });
+  } catch (error) {
+    console.error('Error accepting mission:', error);
+    res.status(500).json({ error: error.message || 'Failed to accept mission' });
+  }
+});
+
+// Complete a mission
+router.post('/missions/:missionId/complete', async (req, res) => {
+  try {
+    const { missionId } = req.params;
+    const { playerId, rewards, notes } = req.body;
+    
+    if (!playerId) {
+      return res.status(400).json({ error: 'Player ID required' });
+    }
+    
+    const mission = await missionRepo.completeMission(missionId, playerId, rewards, notes);
+    
+    res.json({
+      message: 'Mission completed successfully',
+      mission
+    });
+  } catch (error) {
+    console.error('Error completing mission:', error);
+    res.status(500).json({ error: error.message || 'Failed to complete mission' });
+  }
+});
+
+// Get player's missions
+router.get('/player/:playerId/missions', async (req, res) => {
+  try {
+    const { playerId } = req.params;
+    const { status } = req.query;
+    
+    const missions = await missionRepo.getPlayerMissions(playerId, status);
+    res.json(missions);
+  } catch (error) {
+    console.error('Error fetching player missions:', error);
+    res.status(500).json({ error: 'Failed to fetch player missions' });
+  }
+});
+
+// Get mission statistics
+router.get('/missions/stats', async (req, res) => {
+  try {
+    const stats = await missionRepo.getMissionStats();
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching mission stats:', error);
+    res.status(500).json({ error: 'Failed to fetch mission statistics' });
   }
 });
 

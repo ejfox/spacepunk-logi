@@ -2,6 +2,8 @@ import EventEmitter from 'events';
 import { query } from '../db/index.js';
 import MarketSimulation from '../market/MarketSimulation.js';
 import { MarketRepository } from '../repositories/MarketRepository.js';
+import MissionGenerator from '../missions/MissionGenerator.js';
+import { MissionRepository } from '../repositories/MissionRepository.js';
 
 export class TickEngine extends EventEmitter {
   constructor(tickInterval) {
@@ -15,6 +17,10 @@ export class TickEngine extends EventEmitter {
     this.marketSimulation = new MarketSimulation();
     this.marketRepository = new MarketRepository();
     
+    // Initialize mission systems
+    this.missionGenerator = new MissionGenerator();
+    this.missionRepository = new MissionRepository();
+    
     // Forward market events
     this.marketSimulation.on('marketEvent', (event) => {
       this.emit('market:event', event);
@@ -22,6 +28,11 @@ export class TickEngine extends EventEmitter {
     
     this.marketSimulation.on('significantPriceChange', (change) => {
       this.emit('market:priceChange', change);
+    });
+    
+    // Forward mission events
+    this.missionGenerator.on('missionGenerated', (data) => {
+      this.emit('mission:generated', data);
     });
   }
 
@@ -175,8 +186,130 @@ export class TickEngine extends EventEmitter {
   }
 
   async processMissionSystems() {
-    // TODO: Implement LLM generation, expiration, consequence resolution
     console.log('Processing mission systems...');
+    
+    try {
+      // Expire old missions
+      const expiredMissions = await this.missionRepository.expireMissions();
+      if (expiredMissions.length > 0) {
+        console.log(`Expired ${expiredMissions.length} missions`);
+        this.emit('missions:expired', { count: expiredMissions.length, missions: expiredMissions });
+      }
+      
+      // Check if we need to generate new missions
+      const availableMissions = await this.missionRepository.findAvailable(20);
+      const missionCount = availableMissions.length;
+      
+      // Generate new missions if we have fewer than 10 available
+      if (missionCount < 10) {
+        const missionsToGenerate = Math.min(3, 15 - missionCount);
+        await this.generateNewMissions(missionsToGenerate);
+      }
+      
+      // Occasionally generate a special mission (5% chance per tick)
+      if (Math.random() < 0.05) {
+        await this.generateSpecialMission();
+      }
+      
+      this.emit('missions:processed', {
+        tick: this.currentTick,
+        availableMissions: missionCount,
+        expiredMissions: expiredMissions.length
+      });
+      
+    } catch (error) {
+      console.error('Error processing mission systems:', error);
+      throw error;
+    }
+  }
+  
+  async generateNewMissions(count = 1) {
+    try {
+      const generatedMissions = [];
+      
+      // Get context for mission generation
+      const stations = await query('SELECT id, name FROM stations');
+      const recentMarketEvents = this.marketSimulation.marketEvents || [];
+      
+      for (let i = 0; i < count; i++) {
+        try {
+          // Select random station for mission
+          const station = stations.rows[Math.floor(Math.random() * stations.rows.length)];
+          
+          const context = {
+            station: station,
+            marketEvents: recentMarketEvents.slice(0, 3), // Recent events only
+            tick: this.currentTick
+          };
+          
+          // Generate mission using LLM or fallback to templates
+          const mission = await this.missionGenerator.generateMission(context);
+          
+          // Save to database
+          const savedMission = await this.missionRepository.create({
+            ...mission,
+            station_id: station?.id,
+            generated_by: mission.generated_by || 'llm'
+          });
+          
+          generatedMissions.push(savedMission);
+          
+          console.log(`Generated mission: ${savedMission.title} at ${station?.name || 'Unknown Station'}`);
+          
+        } catch (error) {
+          console.error(`Failed to generate mission ${i + 1}:`, error);
+        }
+      }
+      
+      if (generatedMissions.length > 0) {
+        this.emit('missions:generated', {
+          tick: this.currentTick,
+          count: generatedMissions.length,
+          missions: generatedMissions
+        });
+      }
+      
+      return generatedMissions;
+    } catch (error) {
+      console.error('Error generating new missions:', error);
+      return [];
+    }
+  }
+  
+  async generateSpecialMission() {
+    try {
+      // Special missions are high-difficulty with unique context
+      const stations = await query('SELECT id, name FROM stations');
+      const station = stations.rows[Math.floor(Math.random() * stations.rows.length)];
+      
+      const context = {
+        difficulty: Math.random() < 0.7 ? 'dangerous' : 'legendary',
+        missionType: ['reconnaissance', 'emergency_response', 'salvage_operation'][Math.floor(Math.random() * 3)],
+        station: station,
+        marketEvents: this.marketSimulation.marketEvents || [],
+        special: true
+      };
+      
+      const mission = await this.missionGenerator.generateMission(context);
+      
+      const savedMission = await this.missionRepository.create({
+        ...mission,
+        station_id: station?.id,
+        generated_by: 'special_event'
+      });
+      
+      console.log(`Generated SPECIAL mission: ${savedMission.title} (${savedMission.difficulty})`);
+      
+      this.emit('mission:special', {
+        tick: this.currentTick,
+        mission: savedMission
+      });
+      
+      return savedMission;
+    } catch (error) {
+      console.error('Error generating special mission:', error);
+      return null;
+    }
   }
 
   async processFactionSystems() {
