@@ -4,6 +4,8 @@ import MarketSimulation from '../market/MarketSimulation.js';
 import { MarketRepository } from '../repositories/MarketRepository.js';
 import MissionGenerator from '../missions/MissionGenerator.js';
 import { MissionRepository } from '../repositories/MissionRepository.js';
+import TrainingQueue from '../training/TrainingQueue.js';
+import { TrainingQueueRepository } from '../repositories/TrainingQueueRepository.js';
 
 export class TickEngine extends EventEmitter {
   constructor(tickInterval) {
@@ -21,6 +23,10 @@ export class TickEngine extends EventEmitter {
     this.missionGenerator = new MissionGenerator();
     this.missionRepository = new MissionRepository();
     
+    // Initialize training systems
+    this.trainingQueue = new TrainingQueue();
+    this.trainingQueueRepository = new TrainingQueueRepository();
+    
     // Forward market events
     this.marketSimulation.on('marketEvent', (event) => {
       this.emit('market:event', event);
@@ -33,6 +39,23 @@ export class TickEngine extends EventEmitter {
     // Forward mission events
     this.missionGenerator.on('missionGenerated', (data) => {
       this.emit('mission:generated', data);
+    });
+    
+    // Forward training events
+    this.trainingQueue.on('trainingStarted', (data) => {
+      this.emit('training:started', data);
+    });
+    
+    this.trainingQueue.on('trainingProgress', (data) => {
+      this.emit('training:progress', data);
+    });
+    
+    this.trainingQueue.on('trainingCompleted', (data) => {
+      this.emit('training:completed', data);
+    });
+    
+    this.trainingQueue.on('trainingBurnout', (data) => {
+      this.emit('training:burnout', data);
     });
   }
 
@@ -106,8 +129,119 @@ export class TickEngine extends EventEmitter {
   }
 
   async processCrewSystems() {
-    // TODO: Implement crew skill development, relationship changes, aging
     console.log('Processing crew systems...');
+    
+    try {
+      // Get all active training sessions
+      const activeTraining = await this.trainingQueueRepository.findAllActive();
+      
+      if (activeTraining.length === 0) {
+        console.log('No active training sessions');
+        return;
+      }
+      
+      // Load training sessions into the TrainingQueue service
+      for (const session of activeTraining) {
+        if (!this.trainingQueue.activeTraining.has(session.crew_member_id)) {
+          // Reconstruct training session in memory
+          this.trainingQueue.activeTraining.set(session.crew_member_id, {
+            crewMemberId: session.crew_member_id,
+            trainingType: session.training_type,
+            training: this.trainingQueue.trainingTypes[session.training_type] || {
+              name: session.training_type,
+              skill: this.trainingQueueRepository.extractSkillFromTrainingType(session.training_type),
+              intensity: session.intensity || 50
+            },
+            startTime: new Date(session.start_time),
+            endTime: new Date(session.end_time),
+            duration: session.duration_hours,
+            progressMade: session.progress_made || 0,
+            completed: false,
+            burnout: session.burnout || false,
+            totalTicks: 0,
+            efficiency: session.efficiency || 1.0,
+            status: session.status,
+            databaseId: session.id
+          });
+        }
+      }
+      
+      // Get crew members for active training
+      const crewMembers = [];
+      for (const session of activeTraining) {
+        crewMembers.push(session.crew_member);
+      }
+      
+      // Process training tick
+      const results = this.trainingQueue.processTrainingTick(crewMembers);
+      
+      // Update database with progress
+      if (results.progressUpdates.length > 0) {
+        await this.updateTrainingProgress(results.progressUpdates);
+      }
+      
+      // Handle completed training
+      if (results.completedSessions.length > 0) {
+        await this.handleCompletedTraining(results.completedSessions);
+      }
+      
+      this.emit('crew:processed', {
+        tick: this.currentTick,
+        activeTraining: activeTraining.length,
+        progressUpdates: results.progressUpdates.length,
+        completedSessions: results.completedSessions.length
+      });
+      
+      console.log(`Processed ${activeTraining.length} training sessions`);
+      
+    } catch (error) {
+      console.error('Error processing crew systems:', error);
+      throw error;
+    }
+  }
+  
+  async updateTrainingProgress(progressUpdates) {
+    try {
+      const dbUpdates = [];
+      
+      for (const update of progressUpdates) {
+        const session = this.trainingQueue.activeTraining.get(update.crewMemberId);
+        if (session && session.databaseId) {
+          dbUpdates.push({
+            id: session.databaseId,
+            progressMade: session.progressMade,
+            efficiency: session.efficiency,
+            burnout: session.burnout
+          });
+        }
+      }
+      
+      if (dbUpdates.length > 0) {
+        await this.trainingQueueRepository.batchUpdateProgress(dbUpdates);
+      }
+      
+    } catch (error) {
+      console.error('Error updating training progress:', error);
+    }
+  }
+  
+  async handleCompletedTraining(completedSessions) {
+    try {
+      for (const completion of completedSessions) {
+        const session = this.trainingQueue.activeTraining.get(completion.crewMemberId);
+        if (session && session.databaseId) {
+          await this.trainingQueueRepository.completeTraining(
+            session.databaseId,
+            completion.skillIncrease,
+            completion.narrative
+          );
+          
+          console.log(`Training completed: ${completion.crewMemberId} - ${completion.trainingType} (+${completion.skillIncrease} ${completion.skillImproved})`);
+        }
+      }
+    } catch (error) {
+      console.error('Error handling completed training:', error);
+    }
   }
 
   async processMarketSystems() {

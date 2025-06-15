@@ -6,7 +6,9 @@ import { CrewRepository } from '../repositories/CrewRepository.js';
 import { MarketRepository } from '../repositories/MarketRepository.js';
 import { MissionRepository } from '../repositories/MissionRepository.js';
 import { ShipLogRepository } from '../repositories/ShipLogRepository.js';
+import { TrainingQueueRepository } from '../repositories/TrainingQueueRepository.js';
 import AbsenceStories from '../narrative/AbsenceStories.js';
+import TrainingQueue from '../training/TrainingQueue.js';
 import { query } from '../db/index.js';
 
 const router = express.Router();
@@ -16,7 +18,9 @@ const crewRepo = new CrewRepository();
 const marketRepo = new MarketRepository();
 const missionRepo = new MissionRepository();
 const shipLogRepo = new ShipLogRepository();
+const trainingQueueRepo = new TrainingQueueRepository();
 const absenceStories = new AbsenceStories();
+const trainingQueue = new TrainingQueue();
 
 // Create new player and starting ship
 router.post('/player/create', async (req, res) => {
@@ -363,6 +367,207 @@ router.get('/logs/stats', async (req, res) => {
   } catch (error) {
     console.error('Error fetching log stats:', error);
     res.status(500).json({ error: 'Failed to fetch log statistics' });
+  }
+});
+
+// Start training for crew member
+router.post('/crew/:crewId/training/start', async (req, res) => {
+  try {
+    const { crewId } = req.params;
+    const { trainingType, customDuration } = req.body;
+    
+    if (!trainingType) {
+      return res.status(400).json({ error: 'Training type required' });
+    }
+    
+    // Check if crew member exists and get their info
+    const crewMember = await crewRepo.findById(crewId);
+    if (!crewMember) {
+      return res.status(404).json({ error: 'Crew member not found' });
+    }
+    
+    // Check if already training
+    const existingTraining = await trainingQueueRepo.findActiveByCrewMember(crewId);
+    if (existingTraining) {
+      return res.status(400).json({ error: 'Crew member is already in training' });
+    }
+    
+    // Start training session
+    const session = trainingQueue.startTraining(crewId, trainingType, customDuration);
+    
+    // Save to database
+    const savedSession = await trainingQueueRepo.createTrainingSession({
+      crewMemberId: crewId,
+      trainingType,
+      startTime: session.startTime,
+      endTime: session.endTime,
+      duration: session.duration,
+      intensity: session.training.intensity
+    });
+    
+    res.json({
+      message: 'Training started successfully',
+      session: savedSession,
+      trainingInfo: session.training
+    });
+    
+  } catch (error) {
+    console.error('Error starting training:', error);
+    res.status(500).json({ error: error.message || 'Failed to start training' });
+  }
+});
+
+// Cancel training for crew member
+router.post('/crew/:crewId/training/cancel', async (req, res) => {
+  try {
+    const { crewId } = req.params;
+    const { reason = 'Cancelled by captain' } = req.body;
+    
+    const activeTraining = await trainingQueueRepo.findActiveByCrewMember(crewId);
+    if (!activeTraining) {
+      return res.status(404).json({ error: 'No active training found for crew member' });
+    }
+    
+    // Cancel in memory
+    trainingQueue.cancelTraining(crewId);
+    
+    // Cancel in database
+    const cancelledSession = await trainingQueueRepo.cancelTraining(activeTraining.id, reason);
+    
+    res.json({
+      message: 'Training cancelled successfully',
+      session: cancelledSession
+    });
+    
+  } catch (error) {
+    console.error('Error cancelling training:', error);
+    res.status(500).json({ error: error.message || 'Failed to cancel training' });
+  }
+});
+
+// Get training status for crew member
+router.get('/crew/:crewId/training/status', async (req, res) => {
+  try {
+    const { crewId } = req.params;
+    
+    const activeTraining = await trainingQueueRepo.findActiveByCrewMember(crewId);
+    
+    if (!activeTraining) {
+      return res.json({ 
+        hasActiveTraining: false,
+        training: null 
+      });
+    }
+    
+    res.json({
+      hasActiveTraining: true,
+      training: activeTraining
+    });
+    
+  } catch (error) {
+    console.error('Error fetching training status:', error);
+    res.status(500).json({ error: 'Failed to fetch training status' });
+  }
+});
+
+// Get available training options for crew member
+router.get('/crew/:crewId/training/available', async (req, res) => {
+  try {
+    const { crewId } = req.params;
+    
+    const crewMember = await crewRepo.findById(crewId);
+    if (!crewMember) {
+      return res.status(404).json({ error: 'Crew member not found' });
+    }
+    
+    const availableTraining = trainingQueue.getAvailableTraining(crewMember);
+    
+    res.json({
+      crewMember: {
+        id: crewMember.id,
+        name: crewMember.name,
+        skills: {
+          engineering: crewMember.skill_engineering,
+          piloting: crewMember.skill_piloting,
+          social: crewMember.skill_social,
+          combat: crewMember.skill_combat
+        }
+      },
+      availableTraining
+    });
+    
+  } catch (error) {
+    console.error('Error fetching available training:', error);
+    res.status(500).json({ error: 'Failed to fetch available training' });
+  }
+});
+
+// Get training queue for ship
+router.get('/ship/:shipId/training', async (req, res) => {
+  try {
+    const { shipId } = req.params;
+    
+    const activeTraining = await trainingQueueRepo.findActiveByShip(shipId);
+    
+    res.json({
+      shipId,
+      activeTraining,
+      totalSessions: activeTraining.length
+    });
+    
+  } catch (error) {
+    console.error('Error fetching ship training queue:', error);
+    res.status(500).json({ error: 'Failed to fetch training queue' });
+  }
+});
+
+// Get training history for crew member
+router.get('/crew/:crewId/training/history', async (req, res) => {
+  try {
+    const { crewId } = req.params;
+    const { limit = 10 } = req.query;
+    
+    const history = await trainingQueueRepo.getTrainingHistory(crewId, parseInt(limit));
+    
+    res.json(history);
+    
+  } catch (error) {
+    console.error('Error fetching training history:', error);
+    res.status(500).json({ error: 'Failed to fetch training history' });
+  }
+});
+
+// Get training recommendations for crew member
+router.get('/crew/:crewId/training/recommendations', async (req, res) => {
+  try {
+    const { crewId } = req.params;
+    
+    const recommendations = await trainingQueueRepo.getCrewTrainingRecommendations(crewId);
+    
+    if (!recommendations) {
+      return res.status(404).json({ error: 'Crew member not found' });
+    }
+    
+    res.json(recommendations);
+    
+  } catch (error) {
+    console.error('Error fetching training recommendations:', error);
+    res.status(500).json({ error: 'Failed to fetch training recommendations' });
+  }
+});
+
+// Get training statistics
+router.get('/training/stats', async (req, res) => {
+  try {
+    const { shipId, days = 7 } = req.query;
+    
+    const stats = await trainingQueueRepo.getTrainingStatistics(shipId, parseInt(days));
+    
+    res.json(stats);
+    
+  } catch (error) {
+    console.error('Error fetching training statistics:', error);
+    res.status(500).json({ error: 'Failed to fetch training statistics' });
   }
 });
 
