@@ -55,6 +55,9 @@
           <button @click="activeTab = 'market'" :class="{ active: activeTab === 'market' }">
             MARKET ACCESS
           </button>
+          <button @click="activeTab = 'logs'" :class="{ active: activeTab === 'logs' }">
+            SHIP'S LOG
+          </button>
           <button @click="activeTab = 'status'" :class="{ active: activeTab === 'status' }">
             SHIP SYSTEMS
           </button>
@@ -98,6 +101,14 @@
         <MarketTerminal />
       </div>
 
+      <div v-if="activeTab === 'logs'" class="section logs-section">
+        <ShipLogTerminal 
+          v-if="player && ship" 
+          :playerId="player.id" 
+          :shipId="ship.id" 
+        />
+      </div>
+
       <div v-if="activeTab === 'status'" class="section">
         <h2>SYSTEM DIAGNOSTICS</h2>
         <p>All systems operational.</p>
@@ -118,6 +129,7 @@
 
 <script setup>
 import MarketTerminal from '~/components/MarketTerminal.vue'
+import ShipLogTerminal from '~/components/ShipLogTerminal.vue'
 const websocket = ref(null)
 const connectionStatus = ref('disconnected')
 const serverStatus = ref(null)
@@ -523,6 +535,16 @@ function formatDate(dateString) {
 }
 
 .market-section .market-terminal {
+  margin: -8px;
+}
+
+.logs-section {
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.logs-section .ship-log-terminal {
   margin: -8px;
 }
 </style>
