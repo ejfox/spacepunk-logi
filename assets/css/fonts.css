@@ -1,0 +1,104 @@
+/* Monaspace font loading from CDN */
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+
+/* Font stack definitions for different UI purposes */
+:root {
+  /* Primary display font - Monaspace Neon for headings and titles */
+  --font-display: 'Monaspace Neon', 'Space Mono', 'Courier New', monospace;
+  
+  /* Interactive elements font - Monaspace Krypton for buttons and clickable items */
+  --font-interactive: 'Monaspace Krypton', 'Space Mono', 'Courier New', monospace;
+  
+  /* Form inputs font - Monaspace Argon for text inputs and form fields */
+  --font-input: 'Monaspace Argon', 'Space Mono', 'Courier New', monospace;
+  
+  /* Body text font - Monaspace Xenon for readable content */
+  --font-body: 'Monaspace Xenon', 'Space Mono', 'Courier New', monospace;
+  
+  /* Code/data font - Monaspace Radon for numeric data and technical info */
+  --font-code: 'Monaspace Radon', 'Space Mono', 'Courier New', monospace;
+  
+  /* Fallback monospace for critical UI elements */
+  --font-mono: 'Space Mono', 'Courier New', monospace;
+}
+
+/* Load Monaspace fonts from GitHub CDN with fallbacks */
+@font-face {
+  font-family: 'Monaspace Neon';
+  src: url('https://cdn.jsdelivr.net/gh/githubnext/monaspace@main/fonts/webfonts/MonaspaceNeon-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monaspace Neon';
+  src: url('https://cdn.jsdelivr.net/gh/githubnext/monaspace@main/fonts/webfonts/MonaspaceNeon-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monaspace Krypton';
+  src: url('https://cdn.jsdelivr.net/gh/githubnext/monaspace@main/fonts/webfonts/MonaspaceKrypton-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monaspace Krypton';
+  src: url('https://cdn.jsdelivr.net/gh/githubnext/monaspace@main/fonts/webfonts/MonaspaceKrypton-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monaspace Argon';
+  src: url('https://cdn.jsdelivr.net/gh/githubnext/monaspace@main/fonts/webfonts/MonaspaceArgon-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monaspace Argon';
+  src: url('https://cdn.jsdelivr.net/gh/githubnext/monaspace@main/fonts/webfonts/MonaspaceArgon-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monaspace Xenon';
+  src: url('https://cdn.jsdelivr.net/gh/githubnext/monaspace@main/fonts/webfonts/MonaspaceXenon-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monaspace Xenon';
+  src: url('https://cdn.jsdelivr.net/gh/githubnext/monaspace@main/fonts/webfonts/MonaspaceXenon-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monaspace Radon';
+  src: url('https://cdn.jsdelivr.net/gh/githubnext/monaspace@main/fonts/webfonts/MonaspaceRadon-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Monaspace Radon';
+  src: url('https://cdn.jsdelivr.net/gh/githubnext/monaspace@main/fonts/webfonts/MonaspaceRadon-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}

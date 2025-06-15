@@ -58,6 +58,9 @@
           <button @click="activeTab = 'status'" :class="{ active: activeTab === 'status' }">
             SHIP SYSTEMS
           </button>
+          <button @click="activeTab = 'logs'" :class="{ active: activeTab === 'logs' }">
+            SHIP'S LOG
+          </button>
         </div>
       </div>
 
@@ -112,6 +115,15 @@
         <p>Last maintenance: Never</p>
         <p>Next scheduled maintenance: Overdue</p>
       </div>
+
+      <div v-if="activeTab === 'logs'" class="section">
+        <ShipLogDisplay 
+          v-if="ship?.id" 
+          :ship-id="ship.id"
+          ref="shipLogRef"
+          @log-event="handleLogEvent"
+        />
+      </div>
     </div>
 
     <!-- Message Log -->
@@ -137,6 +149,7 @@ const messages = ref([])
 const activeTab = ref('crew')
 const showHiring = ref(false)
 const isLoading = ref(false)
+const shipLogRef = ref(null)
 
 // Login form data
 const username = ref('')
@@ -205,6 +218,15 @@ function handleWebSocketMessage(data) {
       
     case 'crew:update':
       crew.value = data.data
+      break
+      
+    case 'log:generated':
+      addMessage(`New ship's log entry generated: ${data.data.title}`)
+      // Show notification in log display if it exists
+      if (shipLogRef.value) {
+        shipLogRef.value.showNewLogAlert(data.data)
+        shipLogRef.value.refreshLogs()
+      }
       break
   }
 }
@@ -300,6 +322,19 @@ function addMessage(text) {
 
 function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString()
+}
+
+function handleLogEvent(event) {
+  switch (event.type) {
+    case 'logs_refreshed':
+      addMessage(`Ship's log refreshed (${event.count} entries)`)
+      break
+    case 'log_read':
+      addMessage(`Log entry marked as read`)
+      break
+    default:
+      console.log('Unknown log event:', event)
+  }
 }
 </script>
 

@@ -149,6 +149,77 @@ router.get('/ship/:shipId/status', async (req, res) => {
   }
 });
 
+// Ship log endpoints
+router.get('/ship/:shipId/logs', async (req, res) => {
+  try {
+    const { shipId } = req.params;
+    const limit = parseInt(req.query.limit) || 10;
+    
+    const result = await query(`
+      SELECT 
+        id,
+        entry_number,
+        title,
+        content,
+        tick_range_start,
+        tick_range_end,
+        events_processed,
+        generated_at,
+        is_read
+      FROM ship_log_entries 
+      WHERE ship_id = $1 
+        AND is_archived = false
+      ORDER BY entry_number DESC 
+      LIMIT $2
+    `, [shipId, limit]);
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching ship logs:', error);
+    res.status(500).json({ error: 'Failed to fetch ship logs' });
+  }
+});
+
+router.post('/ship/logs/:logId/read', async (req, res) => {
+  try {
+    const { logId } = req.params;
+    
+    await query('UPDATE ship_log_entries SET is_read = true WHERE id = $1', [logId]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error marking log as read:', error);
+    res.status(500).json({ error: 'Failed to mark log as read' });
+  }
+});
+
+router.post('/ship/logs/mark-read', async (req, res) => {
+  try {
+    const { logEntryIds } = req.body;
+    
+    if (!Array.isArray(logEntryIds) || logEntryIds.length === 0) {
+      return res.status(400).json({ error: 'Invalid log entry IDs' });
+    }
+    
+    await query('UPDATE ship_log_entries SET is_read = true WHERE id = ANY($1)', [logEntryIds]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error marking logs as read:', error);
+    res.status(500).json({ error: 'Failed to mark logs as read' });
+  }
+});
+
+router.post('/ship/logs/:logId/archive', async (req, res) => {
+  try {
+    const { logId } = req.params;
+    
+    await query('UPDATE ship_log_entries SET is_archived = true WHERE id = $1', [logId]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error archiving log entry:', error);
+    res.status(500).json({ error: 'Failed to archive log entry' });
+  }
+});
+
 // Generate starting crew for new players
 async function generateStartingCrew() {
   const crewNames = [

@@ -11,6 +11,22 @@ export function setupWebSocketHandlers(wss, tickEngine) {
     });
   });
 
+  // Listen for heartbeat events
+  tickEngine.on('heartbeat', (heartbeatData) => {
+    broadcast(wss, {
+      type: 'server_heartbeat',
+      data: heartbeatData
+    });
+  });
+
+  // Listen for log generation events
+  tickEngine.on('log:generated', (logData) => {
+    broadcast(wss, {
+      type: 'log:generated',
+      data: logData
+    });
+  });
+
   wss.on('connection', (ws) => {
     const clientId = uuidv4();
     const client = {
