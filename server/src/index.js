@@ -6,6 +6,7 @@ import { createServer } from 'http';
 import { initDatabase } from './db/index.js';
 import { TickEngine } from './engine/tickEngine.js';
 import { setupWebSocketHandlers } from './websocket/handlers.js';
+import apiRoutes from './routes/api.js';
 
 dotenv.config();
 
@@ -18,6 +19,9 @@ const TICK_INTERVAL = process.env.TICK_INTERVAL || 10000; // 10 seconds default
 
 app.use(cors());
 app.use(express.json());
+
+// API routes
+app.use('/api', apiRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ 
