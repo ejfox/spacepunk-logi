@@ -4,6 +4,12 @@
     <div class="status-bar">
       <span>[SPACEPUNK LOGISTICS v0.1]</span>
       <span v-if="serverStatus">TICK: {{ serverStatus.currentTick }}</span>
+      <TickCounter 
+        v-if="serverStatus" 
+        :current-tick="serverStatus.currentTick || 0"
+        :next-tick-eta="serverStatus.nextTickEta || 0" 
+        :tick-interval="serverStatus.tickInterval || 30000"
+      />
       <span v-if="serverStatus" class="connection-indicator" :class="connectionStatus">
         {{ connectionStatus.toUpperCase() }}
       </span>
@@ -13,19 +19,32 @@
     <div v-if="!player" class="login-screen">
       <h1>SPACEPUNK LOGISTICS SIMULATION</h1>
       <p>Ship Management Software v1.3.7 (Enterprise Edition)</p>
-      <form @submit.prevent="createPlayer" class="login-form">
-        <label>CAPTAIN USERNAME:</label>
-        <input v-model="username" type="text" required>
-        <label>EMAIL:</label>
-        <input v-model="email" type="email" required>
-        <button type="submit" :disabled="isLoading">
-          {{ isLoading ? 'INITIALIZING...' : 'BEGIN COMMAND' }}
-        </button>
-      </form>
+      <BrutalistForm @submit="createPlayer">
+        <div class="form-field">
+          <label>CAPTAIN USERNAME:</label>
+          <input v-model="username" type="text" required>
+        </div>
+        <div class="form-field">
+          <label>EMAIL:</label>
+          <input v-model="email" type="email" required>
+        </div>
+        <template #actions>
+          <BrutalistButton 
+            type="submit" 
+            variant="primary"
+            size="large"
+            :loading="isLoading"
+          >
+            {{ isLoading ? 'INITIALIZING...' : 'BEGIN COMMAND' }}
+          </BrutalistButton>
+        </template>
+      </BrutalistForm>
     </div>
 
     <!-- Ship Command Interface -->
     <div v-else class="command-interface">
+      <!-- Player Status Bar -->
+      <StatusBar :player="player" :ship="ship" />
       <!-- Captain Info -->
       <div class="section">
         <h2>COMMAND STATUS</h2>
@@ -125,6 +144,11 @@
 </template>
 
 <script setup>
+import TickCounter from '~/components/TickCounter.vue'
+import StatusBar from '~/components/StatusBar.vue'
+import BrutalistButton from '~/components/BrutalistButton.vue'
+import BrutalistForm from '~/components/BrutalistForm.vue'
+
 const websocket = ref(null)
 const connectionStatus = ref('disconnected')
 const serverStatus = ref(null)
@@ -197,6 +221,15 @@ function handleWebSocketMessage(data) {
     case 'tick:update':
       serverStatus.value.currentTick = data.data.tick
       addMessage(`System tick ${data.data.tick} processed (${data.data.duration}ms)`)
+      break
+      
+    case 'server_heartbeat':
+      serverStatus.value = {
+        ...serverStatus.value,
+        currentTick: data.data.currentTick,
+        nextTickEta: data.data.nextTickEta,
+        tickInterval: data.data.tickInterval
+      }
       break
       
     case 'ship:status':
@@ -306,7 +339,7 @@ function formatDate(dateString) {
 <style>
 /* Brutalist HTML styling - intentionally minimal and functional */
 .spacepunk-interface {
-  font-family: 'Courier New', monospace;
+  font-family: var(--font-body);
   background: #000;
   color: #00ff00;
   padding: 8px;
@@ -320,6 +353,8 @@ function formatDate(dateString) {
   display: flex;
   justify-content: space-between;
   background: #001100;
+  font-family: var(--font-display);
+  letter-spacing: 1px;
 }
 
 .connection-indicator.connected {
@@ -340,6 +375,11 @@ function formatDate(dateString) {
   max-width: 400px;
   margin: 40px auto;
   background: #001100;
+}
+
+.login-screen h1 {
+  font-family: var(--font-display);
+  letter-spacing: 1px;
 }
 
 .login-form {
@@ -397,6 +437,8 @@ function formatDate(dateString) {
   font-size: 14px;
   border-bottom: 1px solid #00ff00;
   padding-bottom: 4px;
+  font-family: var(--font-display);
+  letter-spacing: 0.5px;
 }
 
 .section h3 {
