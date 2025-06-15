@@ -5,6 +5,8 @@ import { ShipRepository } from '../repositories/ShipRepository.js';
 import { CrewRepository } from '../repositories/CrewRepository.js';
 import { MarketRepository } from '../repositories/MarketRepository.js';
 import { MissionRepository } from '../repositories/MissionRepository.js';
+import { ShipLogRepository } from '../repositories/ShipLogRepository.js';
+import AbsenceStories from '../narrative/AbsenceStories.js';
 import { query } from '../db/index.js';
 
 const router = express.Router();
@@ -13,6 +15,8 @@ const shipRepo = new ShipRepository();
 const crewRepo = new CrewRepository();
 const marketRepo = new MarketRepository();
 const missionRepo = new MissionRepository();
+const shipLogRepo = new ShipLogRepository();
+const absenceStories = new AbsenceStories();
 
 // Create new player and starting ship
 router.post('/player/create', async (req, res) => {
@@ -266,6 +270,99 @@ router.get('/missions/stats', async (req, res) => {
   } catch (error) {
     console.error('Error fetching mission stats:', error);
     res.status(500).json({ error: 'Failed to fetch mission statistics' });
+  }
+});
+
+// Generate ship's log for player login
+router.post('/player/:playerId/generate-log', async (req, res) => {
+  try {
+    const { playerId } = req.params;
+    
+    const logEntry = await shipLogRepo.generateAbsenceStoryForPlayer(playerId, absenceStories);
+    
+    if (!logEntry) {
+      return res.json({ 
+        message: 'No absence story generated (first login or too short absence)',
+        logEntry: null 
+      });
+    }
+    
+    res.json({
+      message: 'Ship\'s log entry generated successfully',
+      logEntry
+    });
+  } catch (error) {
+    console.error('Error generating ship\'s log:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate ship\'s log' });
+  }
+});
+
+// Get player's ship logs
+router.get('/player/:playerId/logs', async (req, res) => {
+  try {
+    const { playerId } = req.params;
+    const { limit = 10 } = req.query;
+    
+    const logs = await shipLogRepo.findByPlayerId(playerId, parseInt(limit));
+    res.json(logs);
+  } catch (error) {
+    console.error('Error fetching ship logs:', error);
+    res.status(500).json({ error: 'Failed to fetch ship logs' });
+  }
+});
+
+// Get ship's logs by ship ID
+router.get('/ship/:shipId/logs', async (req, res) => {
+  try {
+    const { shipId } = req.params;
+    const { limit = 10 } = req.query;
+    
+    const logs = await shipLogRepo.findByShipId(shipId, parseInt(limit));
+    res.json(logs);
+  } catch (error) {
+    console.error('Error fetching ship logs:', error);
+    res.status(500).json({ error: 'Failed to fetch ship logs' });
+  }
+});
+
+// Get specific log entry
+router.get('/logs/:logId', async (req, res) => {
+  try {
+    const { logId } = req.params;
+    
+    const log = await shipLogRepo.findById(logId);
+    if (!log) {
+      return res.status(404).json({ error: 'Log entry not found' });
+    }
+    
+    res.json(log);
+  } catch (error) {
+    console.error('Error fetching log entry:', error);
+    res.status(500).json({ error: 'Failed to fetch log entry' });
+  }
+});
+
+// Get recent logs across all players
+router.get('/logs/recent', async (req, res) => {
+  try {
+    const { limit = 20, complexity } = req.query;
+    
+    const logs = await shipLogRepo.findRecent(parseInt(limit), complexity);
+    res.json(logs);
+  } catch (error) {
+    console.error('Error fetching recent logs:', error);
+    res.status(500).json({ error: 'Failed to fetch recent logs' });
+  }
+});
+
+// Get ship log statistics
+router.get('/logs/stats', async (req, res) => {
+  try {
+    const stats = await shipLogRepo.getLogStats();
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching log stats:', error);
+    res.status(500).json({ error: 'Failed to fetch log statistics' });
   }
 });
 
