@@ -4,11 +4,13 @@ import { PlayerRepository } from '../repositories/PlayerRepository.js';
 import { ShipRepository } from '../repositories/ShipRepository.js';
 import { CrewRepository } from '../repositories/CrewRepository.js';
 import { query } from '../db/index.js';
+import TraitService from '../services/TraitService.js';
 
 const router = express.Router();
 const playerRepo = new PlayerRepository();
 const shipRepo = new ShipRepository();
 const crewRepo = new CrewRepository();
+const traitService = new TraitService();
 
 // Create new player and starting ship
 router.post('/player/create', async (req, res) => {
@@ -149,6 +151,71 @@ router.get('/ship/:shipId/status', async (req, res) => {
   }
 });
 
+// Trait system endpoints
+router.get('/traits/definitions', async (req, res) => {
+  try {
+    const { level, category } = req.query;
+    const filters = {};
+    if (level) filters.level = parseInt(level);
+    if (category) filters.category = category;
+    
+    const traits = await traitService.getTraitDefinitions(filters);
+    res.json(traits);
+  } catch (error) {
+    console.error('Error fetching trait definitions:', error);
+    res.status(500).json({ error: 'Failed to fetch trait definitions' });
+  }
+});
+
+router.get('/crew/:crewId/traits', async (req, res) => {
+  try {
+    const { crewId } = req.params;
+    const traits = await traitService.getEntityTraits(crewId);
+    res.json(traits);
+  } catch (error) {
+    console.error('Error fetching crew traits:', error);
+    res.status(500).json({ error: 'Failed to fetch crew traits' });
+  }
+});
+
+router.post('/crew/:crewId/traits', async (req, res) => {
+  try {
+    const { crewId } = req.params;
+    const { traitDefinitionId, method = 'manual' } = req.body;
+    
+    if (!traitDefinitionId) {
+      return res.status(400).json({ error: 'Trait definition ID required' });
+    }
+    
+    const assigned = await traitService.assignTrait(crewId, traitDefinitionId, method);
+    res.json({ success: true, trait: assigned });
+  } catch (error) {
+    console.error('Error assigning trait:', error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.get('/crew/:crewId/trait-modifiers', async (req, res) => {
+  try {
+    const { crewId } = req.params;
+    const modifiers = await traitService.calculateTraitModifiers(crewId);
+    res.json(modifiers);
+  } catch (error) {
+    console.error('Error calculating trait modifiers:', error);
+    res.status(500).json({ error: 'Failed to calculate trait modifiers' });
+  }
+});
+
+router.post('/traits/assign-to-existing', async (req, res) => {
+  try {
+    const assigned = await traitService.assignTraitsToExistingCrew();
+    res.json({ success: true, crewAssigned: assigned });
+  } catch (error) {
+    console.error('Error assigning traits to existing crew:', error);
+    res.status(500).json({ error: 'Failed to assign traits to existing crew' });
+  }
+});
+
 // Generate starting crew for new players
 async function generateStartingCrew() {
   const crewNames = [
@@ -168,7 +235,7 @@ async function generateStartingCrew() {
       const homeworld = homeworlds[Math.floor(Math.random() * homeworlds.length)];
       const culture = cultures[Math.floor(Math.random() * cultures.length)];
       
-      await crewRepo.create({
+      const newCrew = await crewRepo.create({
         name: `${name} ${Math.floor(Math.random() * 900) + 100}`,
         age: Math.floor(Math.random() * 30) + 25,
         homeworld,
@@ -180,6 +247,11 @@ async function generateStartingCrew() {
           combat: Math.floor(Math.random() * 40) + 20
         }
       });
+
+      // Assign random traits to new crew member
+      if (newCrew && newCrew.id) {
+        await traitService.assignRandomTraits(newCrew.id, 2);
+      }
     }
   }
 }

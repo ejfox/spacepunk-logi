@@ -69,11 +69,17 @@
         </div>
         <div v-else class="crew-list">
           <div v-for="member in crew" :key="member.id" class="crew-member">
-            <p><strong>{{ member.name }}</strong></p>
-            <p>AGE: {{ member.age }} | HOMEWORLD: {{ member.homeworld }}</p>
-            <p>ENGINEERING: {{ member.skill_engineering }} | PILOTING: {{ member.skill_piloting }}</p>
-            <p>SOCIAL: {{ member.skill_social }} | COMBAT: {{ member.skill_combat }}</p>
-            <p>HEALTH: {{ member.health }}% | MORALE: {{ member.morale }}%</p>
+            <div class="crew-basic-info">
+              <p><strong>{{ member.name }}</strong></p>
+              <p>AGE: {{ member.age }} | HOMEWORLD: {{ member.homeworld }}</p>
+              <p>ENGINEERING: {{ member.skill_engineering }} | PILOTING: {{ member.skill_piloting }}</p>
+              <p>SOCIAL: {{ member.skill_social }} | COMBAT: {{ member.skill_combat }}</p>
+              <p>HEALTH: {{ member.health }}% | MORALE: {{ member.morale }}%</p>
+            </div>
+            <CrewTraits 
+              :crew-member-id="member.id"
+              @traits-updated="handleTraitsUpdated"
+            />
           </div>
         </div>
         <button @click="showHiring = !showHiring" class="action-button">
@@ -300,6 +306,11 @@ function addMessage(text) {
 
 function formatDate(dateString) {
   return new Date(dateString).toLocaleDateString()
+}
+
+function handleTraitsUpdated(data) {
+  // Handle trait updates for crew members
+  console.log('Crew traits updated:', data)
 }
 </script>
 
