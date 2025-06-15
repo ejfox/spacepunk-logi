@@ -94,16 +94,8 @@
         </div>
       </div>
 
-      <div v-if="activeTab === 'market'" class="section">
-        <h2>MARKET TERMINAL</h2>
-        <p>Connecting to {{ ship?.location_station }} Trade Network...</p>
-        <div class="market-data">
-          <div v-for="resource in marketData" :key="resource.code" class="market-item">
-            <span class="resource-name">{{ resource.name }}</span>
-            <span class="resource-price">{{ resource.current_price }} CR</span>
-            <span class="resource-category">{{ resource.category.toUpperCase() }}</span>
-          </div>
-        </div>
+      <div v-if="activeTab === 'market'" class="section market-section">
+        <MarketTerminal />
       </div>
 
       <div v-if="activeTab === 'status'" class="section">
@@ -125,6 +117,7 @@
 </template>
 
 <script setup>
+import MarketTerminal from '~/components/MarketTerminal.vue'
 const websocket = ref(null)
 const connectionStatus = ref('disconnected')
 const serverStatus = ref(null)
@@ -134,7 +127,7 @@ const crew = ref([])
 const availableCrew = ref([])
 const marketData = ref([])
 const messages = ref([])
-const activeTab = ref('crew')
+const activeTab = ref('market')
 const showHiring = ref(false)
 const isLoading = ref(false)
 
@@ -521,5 +514,15 @@ function formatDate(dateString) {
   color: #666;
   font-style: italic;
   padding: 8px 0;
+}
+
+.market-section {
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+.market-section .market-terminal {
+  margin: -8px;
 }
 </style>

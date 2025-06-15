@@ -3,12 +3,14 @@ import crypto from 'crypto';
 import { PlayerRepository } from '../repositories/PlayerRepository.js';
 import { ShipRepository } from '../repositories/ShipRepository.js';
 import { CrewRepository } from '../repositories/CrewRepository.js';
+import { MarketRepository } from '../repositories/MarketRepository.js';
 import { query } from '../db/index.js';
 
 const router = express.Router();
 const playerRepo = new PlayerRepository();
 const shipRepo = new ShipRepository();
 const crewRepo = new CrewRepository();
+const marketRepo = new MarketRepository();
 
 // Create new player and starting ship
 router.post('/player/create', async (req, res) => {
@@ -119,18 +121,42 @@ router.get('/ship/:shipId/crew', async (req, res) => {
 // Get market data (resources)
 router.get('/market/data', async (req, res) => {
   try {
-    const resources = await query('SELECT * FROM resources ORDER BY category, name LIMIT 20');
+    const { stationId = 'earth-station-alpha' } = req.query;
     
-    // Add basic pricing (in real game, this would come from market_data table)
-    const resourcesWithPricing = resources.rows.map(resource => ({
-      ...resource,
-      current_price: Math.round(resource.base_price * (0.8 + Math.random() * 0.4))
-    }));
+    // Get market data for this station
+    const marketData = await marketRepo.findByStation(stationId);
     
-    res.json(resourcesWithPricing);
+    if (marketData.length === 0) {
+      // No market data yet, return resources with base prices
+      const resources = await query('SELECT * FROM resources ORDER BY category, name');
+      const resourcesWithPricing = resources.rows.map(resource => ({
+        ...resource,
+        current_price: resource.base_price,
+        supply: 500,
+        demand: 500,
+        price_trend: 0
+      }));
+      res.json(resourcesWithPricing);
+    } else {
+      res.json(marketData);
+    }
   } catch (error) {
     console.error('Error fetching market data:', error);
     res.status(500).json({ error: 'Failed to fetch market data' });
+  }
+});
+
+// Get market trends for a specific resource
+router.get('/market/trends/:stationId/:resourceId', async (req, res) => {
+  try {
+    const { stationId, resourceId } = req.params;
+    const { hours = 24 } = req.query;
+    
+    const trends = await marketRepo.getMarketTrends(stationId, resourceId, hours);
+    res.json(trends);
+  } catch (error) {
+    console.error('Error fetching market trends:', error);
+    res.status(500).json({ error: 'Failed to fetch market trends' });
   }
 });
 
