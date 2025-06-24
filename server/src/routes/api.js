@@ -10,6 +10,12 @@ import { TrainingQueueRepository } from '../repositories/TrainingQueueRepository
 import AbsenceStories from '../narrative/AbsenceStories.js';
 import TrainingQueue from '../training/TrainingQueue.js';
 import { query } from '../db/index.js';
+import { ContentGenerator } from '../generators/ContentGenerator.js';
+import { DialogGenerator } from '../generators/DialogGenerator.js';
+import { DollhouseMarket } from '../markets/DollhouseMarket.js';
+import { MarketIntelligence } from '../markets/MarketIntelligence.js';
+import { PoliticalHierarchy } from '../politics/PoliticalHierarchy.js';
+import { StoryConsequenceEngine } from '../narrative/StoryConsequenceEngine.js';
 
 const router = express.Router();
 const playerRepo = new PlayerRepository();
@@ -21,6 +27,15 @@ const shipLogRepo = new ShipLogRepository();
 const trainingQueueRepo = new TrainingQueueRepository();
 const absenceStories = new AbsenceStories();
 const trainingQueue = new TrainingQueue();
+const contentGenerator = new ContentGenerator();
+const dialogGenerator = new DialogGenerator();
+const dollhouseMarket = new DollhouseMarket();
+const marketIntelligence = new MarketIntelligence();
+const politicalHierarchy = new PoliticalHierarchy();
+const storyConsequenceEngine = new StoryConsequenceEngine();
+
+// Connect the systems so they can share data
+dialogGenerator.setStoryConsequenceEngine(storyConsequenceEngine);
 
 // Create new player and starting ship
 router.post('/player/create', async (req, res) => {
@@ -72,14 +87,39 @@ router.post('/player/create', async (req, res) => {
   }
 });
 
+
 // Get available crew for hiring
 router.get('/crew/available', async (req, res) => {
   try {
     const availableCrew = await crewRepo.findAvailableForHire(10);
-    res.json(availableCrew);
+    
+    // Always generate fresh crew using LLM + chance.js
+    if (availableCrew.length === 0) {
+      const generatedCrew = await crewRepo.generateAvailableCrew(5);
+      res.json(generatedCrew);
+    } else {
+      res.json(availableCrew);
+    }
   } catch (error) {
-    console.error('Error fetching available crew:', error);
-    res.status(500).json({ error: 'Failed to fetch crew data' });
+    console.error('Error with crew system:', error);
+    res.status(500).json({ error: 'Crew generation system failed' });
+  }
+});
+
+// Get individual crew member details
+router.get('/crew/:crewId', async (req, res) => {
+  try {
+    const { crewId } = req.params;
+    const crewMember = await crewRepo.findById(crewId);
+    
+    if (!crewMember) {
+      return res.status(404).json({ error: 'Crew member not found' });
+    }
+    
+    res.json(crewMember);
+  } catch (error) {
+    console.error('Error fetching crew member:', error);
+    res.status(500).json({ error: 'Failed to fetch crew member details' });
   }
 });
 
@@ -128,26 +168,54 @@ router.get('/ship/:shipId/crew', async (req, res) => {
   }
 });
 
+// Debug endpoint to check resources
+router.get('/debug/resources', async (req, res) => {
+  try {
+    const resources = await query('SELECT * FROM resources LIMIT 10');
+    const stations = await query('SELECT * FROM stations LIMIT 10');
+    const marketData = await query('SELECT * FROM market_data LIMIT 10');
+    
+    res.json({
+      resourceCount: resources.rows.length,
+      resources: resources.rows,
+      stationCount: stations.rows.length,
+      stations: stations.rows,
+      marketDataCount: marketData.rows.length,
+      marketData: marketData.rows
+    });
+  } catch (error) {
+    console.error('Debug query error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get market data (resources)
 router.get('/market/data', async (req, res) => {
   try {
     const { stationId = 'earth-station-alpha' } = req.query;
     
+    console.log('Fetching market data for station:', stationId);
+    
     // Get market data for this station
     const marketData = await marketRepo.findByStation(stationId);
     
     if (marketData.length === 0) {
+      console.log('No market data found, returning resources with base prices');
       // No market data yet, return resources with base prices
       const resources = await query('SELECT * FROM resources ORDER BY category, name');
       const resourcesWithPricing = resources.rows.map(resource => ({
         ...resource,
+        resource_name: resource.name,
+        resource_category: resource.category,
         current_price: resource.base_price,
-        supply: 500,
-        demand: 500,
-        price_trend: 0
+        supply: Math.floor(Math.random() * 400) + 100,
+        demand: Math.floor(Math.random() * 400) + 100,
+        price_trend: (Math.random() - 0.5) * 20
       }));
+      console.log(`Returning ${resourcesWithPricing.length} resources with simulated data`);
       res.json(resourcesWithPricing);
     } else {
+      console.log(`Found ${marketData.length} market entries`);
       res.json(marketData);
     }
   } catch (error) {
@@ -517,7 +585,13 @@ router.get('/ship/:shipId/training', async (req, res) => {
     
   } catch (error) {
     console.error('Error fetching ship training queue:', error);
-    res.status(500).json({ error: 'Failed to fetch training queue' });
+    
+    // Return empty training data if table doesn't exist yet
+    res.json({
+      shipId: req.params.shipId,
+      activeTraining: [],
+      totalSessions: 0
+    });
   }
 });
 
@@ -567,7 +641,15 @@ router.get('/training/stats', async (req, res) => {
     
   } catch (error) {
     console.error('Error fetching training statistics:', error);
-    res.status(500).json({ error: 'Failed to fetch training statistics' });
+    
+    // Return default stats if table doesn't exist yet
+    res.json({
+      totalSessions: 0,
+      completionRate: 0,
+      avgTrainingTime: '0h',
+      activeTraining: 0,
+      completedToday: 0
+    });
   }
 });
 
@@ -583,6 +665,117 @@ router.get('/ship/:shipId/status', async (req, res) => {
   } catch (error) {
     console.error('Error fetching ship status:', error);
     res.status(500).json({ error: 'Failed to fetch ship status' });
+  }
+});
+
+// Get player info with license data
+router.get('/player/:playerId', async (req, res) => {
+  try {
+    const { playerId } = req.params;
+    const player = await playerRepo.findById(playerId);
+    
+    if (!player) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+    
+    res.json(player);
+  } catch (error) {
+    console.error('Error fetching player data:', error);
+    res.status(500).json({ error: 'Failed to fetch player data' });
+  }
+});
+
+// Purchase software license upgrade
+router.post('/player/:playerId/license/purchase', async (req, res) => {
+  try {
+    const { playerId } = req.params;
+    const { newLicense } = req.body;
+    
+    if (!newLicense || !['STANDARD', 'PROFESSIONAL'].includes(newLicense)) {
+      return res.status(400).json({ 
+        error: 'Invalid license type. Must be STANDARD or PROFESSIONAL' 
+      });
+    }
+    
+    const result = await playerRepo.purchaseLicense(playerId, newLicense);
+    
+    res.json({
+      message: 'Software license upgraded successfully',
+      player: result,
+      licenseInfo: {
+        newLicense: result.software_license,
+        creditsRemaining: result.credits,
+        agreementText: `SpaceCorp™ Software License Agreement v${newLicense === 'STANDARD' ? '2.0' : '3.0'} - By purchasing this license, you agree to all terms and conditions including but not limited to: mandatory telemetry reporting, algorithmic performance reviews, and waiver of all rights to software-related grievances.`
+      }
+    });
+  } catch (error) {
+    console.error('Error purchasing license:', error);
+    
+    // Handle specific error cases
+    if (error.message.includes('Insufficient credits')) {
+      return res.status(402).json({ error: error.message });
+    }
+    if (error.message.includes('Already at maximum')) {
+      return res.status(400).json({ error: error.message });
+    }
+    if (error.message.includes('Invalid upgrade path')) {
+      return res.status(400).json({ error: error.message });
+    }
+    if (error.message.includes('Player not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    
+    res.status(500).json({ error: 'Failed to process license purchase' });
+  }
+});
+
+// Get player's license purchase history
+router.get('/player/:playerId/license/history', async (req, res) => {
+  try {
+    const { playerId } = req.params;
+    
+    const history = await query(
+      `SELECT * FROM license_purchases 
+       WHERE player_id = $1 
+       ORDER BY purchased_at DESC`,
+      [playerId]
+    );
+    
+    res.json(history.rows);
+  } catch (error) {
+    console.error('Error fetching license history:', error);
+    res.status(500).json({ error: 'Failed to fetch license history' });
+  }
+});
+
+// Update player credits (for trading/mission rewards)
+router.post('/player/:playerId/credits', async (req, res) => {
+  try {
+    const { playerId } = req.params;
+    const { amount, reason } = req.body;
+    
+    if (typeof amount !== 'number') {
+      return res.status(400).json({ error: 'Amount must be a number' });
+    }
+    
+    const result = await playerRepo.updateCredits(playerId, amount);
+    
+    if (!result) {
+      return res.status(404).json({ error: 'Player not found' });
+    }
+    
+    res.json({
+      message: `Credits ${amount >= 0 ? 'added' : 'deducted'} successfully`,
+      player: result,
+      transaction: {
+        amount,
+        reason: reason || 'Unspecified transaction',
+        newBalance: result.credits
+      }
+    });
+  } catch (error) {
+    console.error('Error updating credits:', error);
+    res.status(500).json({ error: 'Failed to update credits' });
   }
 });
 
@@ -620,5 +813,603 @@ async function generateStartingCrew() {
     }
   }
 }
+
+// Content Generation Endpoints (Development/Admin)
+router.post('/generate/resources/:count?', async (req, res) => {
+  try {
+    const count = parseInt(req.params.count) || 20;
+    const resources = await contentGenerator.generateResources(count);
+    
+    // Insert into database
+    const insertPromises = resources.map(resource => 
+      query(
+        `INSERT INTO resources (code, name, category, base_price, weight, volume, description) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [resource.code, resource.name, resource.category, resource.base_price, 
+         resource.weight, resource.volume, resource.description]
+      )
+    );
+    
+    await Promise.all(insertPromises);
+    res.json({ 
+      message: `Generated ${resources.length} resources`,
+      resources: resources.slice(0, 5) // Show first 5 as preview
+    });
+  } catch (error) {
+    console.error('Error generating resources:', error);
+    res.status(500).json({ error: 'Failed to generate resources' });
+  }
+});
+
+router.post('/generate/crew/:count?', async (req, res) => {
+  try {
+    const count = parseInt(req.params.count) || 10;
+    const crewMembers = await contentGenerator.generateCrewMembers(count);
+    
+    res.json({ 
+      message: `Generated ${crewMembers.length} crew members`,
+      crew: crewMembers.slice(0, 3) // Show first 3 as preview
+    });
+  } catch (error) {
+    console.error('Error generating crew:', error);
+    res.status(500).json({ error: 'Failed to generate crew' });
+  }
+});
+
+router.post('/generate/stations/:count?', async (req, res) => {
+  try {
+    const count = parseInt(req.params.count) || 15;
+    const stations = await contentGenerator.generateStations(count);
+    
+    // Insert into database with all the detail fields
+    const insertPromises = stations.map(station => 
+      query(
+        `INSERT INTO stations (name, galaxy, sector, station_type, faction, population, security_level, description, notorious_for, bureaucratic_nightmare, local_regulations)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        [station.name, station.galaxy, station.sector, station.station_type, 
+         station.faction, station.population || 10000, station.security_level || 50,
+         station.description, station.notorious_for, station.bureaucratic_nightmare, station.local_regulations]
+      )
+    );
+    
+    await Promise.all(insertPromises);
+    res.json({ 
+      message: `Generated ${stations.length} stations`,
+      stations: stations.slice(0, 3) // Show first 3 as preview
+    });
+  } catch (error) {
+    console.error('Error generating stations:', error);
+    res.status(500).json({ error: 'Failed to generate stations' });
+  }
+});
+
+router.post('/generate/missions/:count?', async (req, res) => {
+  try {
+    const count = parseInt(req.params.count) || 25;
+    const missions = await contentGenerator.generateMissions(count);
+    
+    // Insert into database
+    const insertPromises = missions.map(mission => 
+      query(
+        `INSERT INTO missions (title, description, mission_type, issuing_faction, reward_credits)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [mission.title, mission.description, mission.mission_type, 
+         mission.issuing_faction, mission.reward_credits]
+      )
+    );
+    
+    await Promise.all(insertPromises);
+    res.json({ 
+      message: `Generated ${missions.length} missions`,
+      missions: missions.slice(0, 3) // Show first 3 as preview
+    });
+  } catch (error) {
+    console.error('Error generating missions:', error);
+    res.status(500).json({ error: 'Failed to generate missions' });
+  }
+});
+
+// Generate everything at once (populate world)
+router.post('/generate/world', async (req, res) => {
+  try {
+    const results = {};
+    
+    // Generate in parallel
+    const [resources, stations, missions] = await Promise.allSettled([
+      contentGenerator.generateResources(30),
+      contentGenerator.generateStations(20), 
+      contentGenerator.generateMissions(40)
+    ]);
+    
+    // Process results
+    if (resources.status === 'fulfilled') {
+      results.resources = resources.value.length;
+    }
+    if (stations.status === 'fulfilled') {
+      results.stations = stations.value.length;
+    }
+    if (missions.status === 'fulfilled') {
+      results.missions = missions.value.length;
+    }
+    
+    res.json({
+      message: 'World population complete',
+      generated: results
+    });
+  } catch (error) {
+    console.error('Error populating world:', error);
+    res.status(500).json({ error: 'Failed to populate world' });
+  }
+});
+
+// Dialog Generation with Story DNA
+router.post('/dialog/generate', async (req, res) => {
+  try {
+    const { actionType, playerState } = req.body;
+    
+    if (!actionType || !playerState) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: actionType and playerState' 
+      });
+    }
+    
+    console.log(`Generating dialog for ${actionType} action with state:`, playerState);
+    
+    // ANALYZE PLAYER ACTIONS FOR MARKET INTEL
+    if (playerState.previous_choices) {
+      const newIntel = marketIntelligence.analyzePlayerActions(
+        playerState.previous_choices, 
+        { currentTick: Math.floor(Date.now() / 30000) } // 30-second ticks
+      );
+      
+      if (newIntel.length > 0) {
+        console.log(`🕵️  Discovered ${newIntel.length} pieces of market intel from player actions`);
+      }
+    }
+    
+    const dialog = await dialogGenerator.generateDialog(actionType, playerState);
+    
+    res.json(dialog);
+  } catch (error) {
+    console.error('Error generating dialog:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate dialog',
+      fallback: dialogGenerator.generateFallbackDialog(
+        req.body.actionType, 
+        req.body.playerState
+      )
+    });
+  }
+});
+
+// Execute player choice and process ALL cascading consequences
+router.post('/choice/execute', async (req, res) => {
+  try {
+    const { playerId, choice, context, gameState } = req.body;
+    
+    if (!playerId || !choice) {
+      return res.status(400).json({
+        error: 'Missing required fields: playerId and choice'
+      });
+    }
+    
+    console.log(`🎭 Executing choice: ${choice.id} for player ${playerId}`);
+    
+    // Get current game state context
+    const enrichedGameState = {
+      ...gameState,
+      politicalRegime: politicalHierarchy.regime,
+      currentTick: Math.floor(Date.now() / 30000),
+      marketSnapshot: dollhouseMarket.getMarketSnapshot()
+    };
+    
+    // Process ALL consequences through the Story Consequence Engine
+    const fullConsequences = storyConsequenceEngine.processPlayerChoice(
+      playerId, 
+      choice, 
+      context || {}, 
+      enrichedGameState
+    );
+    
+    // APPLY IMMEDIATE EFFECTS
+    const immediateResults = {
+      fuel: 0,
+      credits: 0,
+      heat: 0,
+      narrative: choice.consequences?.narrative || 'Action completed.'
+    };
+    
+    // Apply resource changes
+    if (choice.consequences?.fuel) {
+      const fuelChange = parseInt(choice.consequences.fuel.replace(/\+/, ''));
+      immediateResults.fuel = fuelChange;
+    }
+    if (choice.consequences?.credits) {
+      const creditsMatch = choice.consequences.credits.match(/([+-]?\d+)/);
+      if (creditsMatch) {
+        immediateResults.credits = parseInt(creditsMatch[1]);
+      }
+    }
+    if (choice.consequences?.heat) {
+      const heatChange = parseInt(choice.consequences.heat.replace(/\+/, ''));
+      immediateResults.heat = heatChange;
+    }
+    
+    // APPLY POLITICAL EFFECTS
+    const politicalEffects = [];
+    if (choice.consequences?.political_effect) {
+      try {
+        const politicalResult = politicalHierarchy.influencePolitician(
+          playerId, 
+          choice.consequences.political_effect.politician,
+          choice.id.includes('bribe') ? 'bribe' : choice.id.includes('blackmail') ? 'blackmail' : 'information_trade',
+          Math.abs(immediateResults.credits) || 1000
+        );
+        politicalEffects.push(politicalResult);
+      } catch (error) {
+        console.log(`⚠️  Political effect failed: ${error.message}`);
+      }
+    }
+    
+    // APPLY MARKET EFFECTS
+    const marketEffects = [];
+    fullConsequences.cascading.forEach(effect => {
+      if (effect.type === 'intelligence_value' && effect.system === 'market') {
+        // Apply market intelligence discovery
+        const intelEvent = {
+          id: `player_${Date.now()}`,
+          resourceId: effect.market_sector,
+          type: 'player_discovery',
+          impact: effect.intelligence_quality,
+          description: effect.description,
+          triggerTick: enrichedGameState.currentTick + 1
+        };
+        marketEffects.push(intelEvent);
+      }
+    });
+    
+    // APPLY CREW EFFECTS (placeholder for when crew system is enhanced)
+    const crewEffects = fullConsequences.cascading.filter(effect => effect.system === 'crew');
+    
+    // Get updated reputation
+    const currentReputation = storyConsequenceEngine.getPlayerReputation(playerId);
+    
+    // Get active modifiers for future choices
+    const activeModifiers = storyConsequenceEngine.getActiveModifiers(playerId, enrichedGameState.currentTick);
+    
+    res.json({
+      success: true,
+      immediate_effects: immediateResults,
+      political_effects: politicalEffects,
+      market_effects: marketEffects,
+      crew_effects: crewEffects,
+      reputation: currentReputation,
+      active_modifiers: activeModifiers,
+      narrative_consequences: fullConsequences.narrative_memory,
+      cascading_effects: fullConsequences.cascading.length,
+      message: `Choice executed with ${fullConsequences.cascading.length} cascading effects across all systems`
+    });
+    
+  } catch (error) {
+    console.error('Error executing choice:', error);
+    res.status(500).json({
+      error: 'Failed to execute choice',
+      details: error.message
+    });
+  }
+});
+
+// Get player's consequence history and reputation
+router.get('/player/:playerId/consequences', async (req, res) => {
+  try {
+    const { playerId } = req.params;
+    const { limit = 20 } = req.query;
+    
+    const history = storyConsequenceEngine.getPlayerConsequenceHistory(playerId);
+    const reputation = storyConsequenceEngine.getPlayerReputation(playerId);
+    const activeModifiers = storyConsequenceEngine.getActiveModifiers(
+      playerId, 
+      Math.floor(Date.now() / 30000)
+    );
+    
+    res.json({
+      consequence_history: history.slice(-limit),
+      reputation: reputation,
+      active_modifiers: activeModifiers,
+      total_choices: history.length
+    });
+    
+  } catch (error) {
+    console.error('Error fetching player consequences:', error);
+    res.status(500).json({ error: 'Failed to fetch consequence data' });
+  }
+});
+
+// DOLLHOUSE MARKET ENDPOINTS
+
+// Get current market snapshot
+router.get('/market/dollhouse', async (req, res) => {
+  try {
+    const snapshot = dollhouseMarket.getMarketSnapshot();
+    res.json(snapshot);
+  } catch (error) {
+    console.error('Error fetching market snapshot:', error);
+    res.status(500).json({ error: 'Failed to fetch market data' });
+  }
+});
+
+// Execute market trade
+router.post('/market/trade', async (req, res) => {
+  try {
+    const { resourceId, side, volume, playerId } = req.body;
+    
+    if (!resourceId || !side || !volume || !playerId) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: resourceId, side, volume, playerId' 
+      });
+    }
+    
+    const result = dollhouseMarket.executeMarketOrder(resourceId, side, volume, playerId);
+    
+    res.json({
+      message: 'Trade executed successfully',
+      trade: result,
+      marketSnapshot: dollhouseMarket.getMarketSnapshot()[resourceId]
+    });
+  } catch (error) {
+    console.error('Error executing trade:', error);
+    res.status(500).json({ error: error.message || 'Failed to execute trade' });
+  }
+});
+
+// Get player's discovered intel
+router.get('/market/intel/:playerId', async (req, res) => {
+  try {
+    const { playerId } = req.params;
+    const intel = marketIntelligence.getPlayerIntel(playerId);
+    
+    res.json({
+      intel,
+      totalIntel: intel.length,
+      activeIntel: intel.filter(i => !i.triggered).length
+    });
+  } catch (error) {
+    console.error('Error fetching player intel:', error);
+    res.status(500).json({ error: 'Failed to fetch market intelligence' });
+  }
+});
+
+// Get market predictions (INSIDER TRADING GOLD)
+router.get('/market/predictions', async (req, res) => {
+  try {
+    const { lookahead = 5 } = req.query;
+    const currentTick = Math.floor(Date.now() / 30000);
+    
+    const predictions = marketIntelligence.getMarketPredictions(currentTick, parseInt(lookahead));
+    
+    res.json({
+      currentTick,
+      predictions,
+      message: predictions.length > 0 ? 'Market predictions available' : 'No upcoming market events predicted'
+    });
+  } catch (error) {
+    console.error('Error fetching market predictions:', error);
+    res.status(500).json({ error: 'Failed to fetch market predictions' });
+  }
+});
+
+// Force market intelligence discovery (for testing)
+router.post('/market/intel/discover', async (req, res) => {
+  try {
+    const { actionType, playerId } = req.body;
+    const currentTick = Math.floor(Date.now() / 30000);
+    
+    const intel = marketIntelligence.generateIntelFromAction(
+      actionType, 
+      { currentTick, playerId }
+    );
+    
+    if (intel) {
+      marketIntelligence.playerIntel.set(intel.id, intel);
+      res.json({
+        message: 'Market intelligence discovered',
+        intel
+      });
+    } else {
+      res.json({
+        message: 'No intelligence discovered from this action'
+      });
+    }
+  } catch (error) {
+    console.error('Error discovering intel:', error);
+    res.status(500).json({ error: 'Failed to discover intelligence' });
+  }
+});
+
+// Process market tick (called by tick engine)
+router.post('/market/tick', async (req, res) => {
+  try {
+    const { currentTick } = req.body;
+    
+    const triggeredEvents = marketIntelligence.processTick(currentTick, dollhouseMarket);
+    
+    res.json({
+      message: 'Market tick processed',
+      triggeredEvents,
+      marketSnapshot: dollhouseMarket.getMarketSnapshot()
+    });
+  } catch (error) {
+    console.error('Error processing market tick:', error);
+    res.status(500).json({ error: 'Failed to process market tick' });
+  }
+});
+
+// POLITICAL SYSTEM ENDPOINTS
+
+// Get all politicians in the current world
+router.get('/politics/hierarchy', async (req, res) => {
+  try {
+    const politicians = politicalHierarchy.getAllPoliticians();
+    
+    // Return public info only (no weaknesses unless discovered)
+    const publicInfo = politicians.map(p => ({
+      id: p.id,
+      name: p.name,
+      title: p.title,
+      power: p.power,
+      marketInfluence: p.marketInfluence,
+      background: p.background,
+      currentAgenda: p.currentAgenda
+    }));
+    
+    res.json({
+      politicians: publicInfo,
+      worldSeed: 'current' // TODO: Add actual world seed
+    });
+  } catch (error) {
+    console.error('Error fetching political hierarchy:', error);
+    res.status(500).json({ error: 'Failed to fetch political hierarchy' });
+  }
+});
+
+// Get player's relationship with politicians
+router.get('/politics/relationships/:playerId', async (req, res) => {
+  try {
+    const { playerId } = req.params;
+    const politicians = politicalHierarchy.getAllPoliticians();
+    
+    const relationships = politicians.map(politician => {
+      const relationship = politicalHierarchy.getRelationship(playerId, politician.id);
+      return {
+        politicianId: politician.id,
+        name: politician.name,
+        title: politician.title,
+        relationshipScore: relationship.score,
+        knownWeaknesses: relationship.knownWeaknesses,
+        lastInteraction: relationship.lastInteraction,
+        history: relationship.history
+      };
+    });
+    
+    res.json({ relationships });
+  } catch (error) {
+    console.error('Error fetching political relationships:', error);
+    res.status(500).json({ error: 'Failed to fetch political relationships' });
+  }
+});
+
+// Discover politician through espionage
+router.post('/politics/discover', async (req, res) => {
+  try {
+    const { playerId, actionType } = req.body;
+    
+    if (!playerId || !actionType) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: playerId, actionType' 
+      });
+    }
+    
+    // Random chance to discover a politician
+    const politicians = ['governor', 'trade_commissioner', 'safety_director', 'military_liaison'];
+    const targetPolitician = politicians[Math.floor(Math.random() * politicians.length)];
+    
+    const discovery = politicalHierarchy.discoverPolitician(playerId, targetPolitician, actionType);
+    
+    if (discovery) {
+      console.log(`🏛️  Player ${playerId} discovered politician via ${actionType}`);
+      res.json({
+        message: 'Political intelligence discovered',
+        discovery
+      });
+    } else {
+      res.json({
+        message: 'No political intelligence discovered'
+      });
+    }
+  } catch (error) {
+    console.error('Error discovering politician:', error);
+    res.status(500).json({ error: 'Failed to discover politician' });
+  }
+});
+
+// Attempt to influence a politician
+router.post('/politics/influence', async (req, res) => {
+  try {
+    const { playerId, politicianId, method, amount } = req.body;
+    
+    if (!playerId || !politicianId || !method) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: playerId, politicianId, method' 
+      });
+    }
+    
+    const result = politicalHierarchy.influencePolitician(playerId, politicianId, method, amount);
+    
+    console.log(`🏛️  Political influence attempt: ${method} on ${politicianId} by ${playerId}`);
+    
+    res.json({
+      message: 'Political influence attempt completed',
+      result,
+      newRelationship: politicalHierarchy.getRelationship(playerId, politicianId)
+    });
+  } catch (error) {
+    console.error('Error influencing politician:', error);
+    res.status(500).json({ error: error.message || 'Failed to influence politician' });
+  }
+});
+
+// Trigger political market event (for testing or as consequence of high relationships)
+router.post('/politics/market-event', async (req, res) => {
+  try {
+    const { politicianId, eventType, targetResource, playerId } = req.body;
+    
+    // Check if player has sufficient relationship
+    const relationship = politicalHierarchy.getRelationship(playerId, politicianId);
+    if (relationship.score < 50) {
+      return res.status(403).json({ 
+        error: 'Insufficient political relationship for market manipulation' 
+      });
+    }
+    
+    const politicalEvent = politicalHierarchy.triggerPoliticalMarketEvent(
+      politicianId, 
+      eventType, 
+      targetResource
+    );
+    
+    if (politicalEvent.success === false) {
+      return res.status(400).json({ 
+        error: politicalEvent.reason 
+      });
+    }
+    
+    // Apply the market effect
+    const marketEffect = dollhouseMarket.applyInsiderTrading(
+      targetResource,
+      eventType,
+      'high' // Political events are high impact
+    );
+    
+    // Reduce relationship after using political favor
+    politicalHierarchy.updateRelationship(
+      playerId, 
+      politicianId, 
+      -15, 
+      'political_favor_used'
+    );
+    
+    console.log(`🏛️  Political market event triggered: ${eventType} on ${targetResource}`);
+    
+    res.json({
+      message: 'Political market event triggered',
+      politicalEvent,
+      marketEffect,
+      newRelationship: politicalHierarchy.getRelationship(playerId, politicianId)
+    });
+  } catch (error) {
+    console.error('Error triggering political market event:', error);
+    res.status(500).json({ error: 'Failed to trigger political market event' });
+  }
+});
 
 export default router;
