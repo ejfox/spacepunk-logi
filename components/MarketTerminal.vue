@@ -23,7 +23,16 @@
         <div class="col-volume">VOL</div>
       </div>
       
-      <div class="market-category" v-for="category in groupedResources" :key="category.name">
+      <div v-if="resources.length === 0" class="no-data-message">
+        <div class="loading-indicator">
+          [!] MARKET DATA INITIALIZING...
+        </div>
+        <div class="loading-details">
+          {{ isConnected ? 'Waiting for market tick update...' : 'Connection lost. Attempting to reconnect...' }}
+        </div>
+      </div>
+      
+      <div v-else class="market-category" v-for="category in groupedResources" :key="category.name">
         <div class="category-header">
           ── {{ category.name.toUpperCase() }} ──────────────────────────────────────────────────
         </div>
@@ -89,6 +98,15 @@
       </div>
     </div>
     
+    <!-- Market Commentary Section -->
+    <div v-if="marketCommentary.length > 0" class="market-commentary">
+      <div class="commentary-header">[MARKET ANALYSIS]</div>
+      <div v-for="(comment, index) in marketCommentary" :key="index" class="commentary-item">
+        <span class="timestamp">{{ comment.timestamp }}</span>
+        <span class="commentary-text">{{ comment.text }}</span>
+      </div>
+    </div>
+    
     <div class="keyboard-hints">
       [TAB] SWITCH VIEW | [R] REFRESH | [F] FILTER | [S] SORT | [SPACE] QUICK TRADE
     </div>
@@ -104,11 +122,13 @@ export default {
       resources: [],
       isConnected: true,
       currentTime: '',
-      currentStation: 'EARTH-ALPHA',
+      currentStation: 'earth-station-alpha',
       alerts: [],
       priceHistory: {},
       updateInterval: null,
-      sparklineChars: ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█']
+      sparklineChars: ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'],
+      marketCommentary: [],
+      ws: null
     }
   },
   
@@ -159,8 +179,15 @@ export default {
   methods: {
     async fetchMarketData() {
       try {
-        const response = await fetch('/api/market/data?stationId=' + this.currentStation.toLowerCase());
+        const response = await fetch('http://localhost:3666/api/market/data?stationId=' + this.currentStation);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
+        console.log('Market data received:', data); // Debug log
+        
         this.resources = data;
         
         // Update price history for sparklines
@@ -176,9 +203,13 @@ export default {
         });
         
         this.checkForAlerts();
+        this.isConnected = true;
       } catch (error) {
         console.error('Market data fetch error:', error);
         this.isConnected = false;
+        
+        // Show empty state with example data
+        this.resources = [];
       }
     },
     
@@ -261,12 +292,87 @@ export default {
     updateClock() {
       const now = new Date();
       this.currentTime = now.toISOString().split('T')[1].split('.')[0];
+    },
+
+    connectWebSocket() {
+      const wsUrl = 'ws://localhost:3666';
+      this.ws = new WebSocket(wsUrl);
+      
+      this.ws.onopen = () => {
+        console.log('Market WebSocket connected');
+        this.isConnected = true;
+      };
+      
+      this.ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          this.handleWebSocketMessage(message);
+        } catch (error) {
+          console.error('WebSocket message parse error:', error);
+        }
+      };
+      
+      this.ws.onclose = () => {
+        console.log('Market WebSocket disconnected');
+        this.isConnected = false;
+        // Reconnect after 5 seconds
+        setTimeout(() => {
+          this.connectWebSocket();
+        }, 5000);
+      };
+      
+      this.ws.onerror = (error) => {
+        console.error('Market WebSocket error:', error);
+        this.isConnected = false;
+      };
+    },
+
+    handleWebSocketMessage(message) {
+      switch (message.type) {
+        case 'market:update':
+          if (message.data.marketData) {
+            // Process market data with commentary
+            message.data.marketData.forEach(update => {
+              if (update.commentary) {
+                this.addMarketCommentary(update.commentary);
+              }
+            });
+          }
+          // Refresh market data
+          this.fetchMarketData();
+          break;
+          
+        case 'market:event':
+          this.addMarketCommentary(message.data.description || message.data.name);
+          break;
+          
+        case 'market:priceChange':
+          const change = message.data;
+          this.addMarketCommentary(
+            `ALERT: ${change.resourceName} price ${change.priceTrend > 0 ? 'surge' : 'crash'} at ${change.stationId}`
+          );
+          break;
+      }
+    },
+
+    addMarketCommentary(text) {
+      const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+      this.marketCommentary.unshift({
+        timestamp,
+        text
+      });
+      
+      // Keep only last 10 commentary items
+      if (this.marketCommentary.length > 10) {
+        this.marketCommentary = this.marketCommentary.slice(0, 10);
+      }
     }
   },
   
   mounted() {
     this.fetchMarketData();
     this.updateClock();
+    this.connectWebSocket();
     
     // Update market data every 30 seconds
     this.updateInterval = setInterval(() => {
@@ -282,6 +388,9 @@ export default {
   beforeUnmount() {
     if (this.updateInterval) {
       clearInterval(this.updateInterval);
+    }
+    if (this.ws) {
+      this.ws.close();
     }
   }
 }
@@ -537,5 +646,62 @@ export default {
 
 .market-terminal::-webkit-scrollbar-thumb:hover {
   background: #0f0;
+}
+
+/* Market Commentary Styles */
+.market-commentary {
+  margin-top: 15px;
+  border-top: 1px solid #0f0;
+  padding-top: 10px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.commentary-header {
+  color: #0f0;
+  font-weight: bold;
+  margin-bottom: 5px;
+  text-align: center;
+  border-bottom: 1px solid #080;
+  padding-bottom: 3px;
+}
+
+.commentary-item {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 3px;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.commentary-item .timestamp {
+  color: #080;
+  font-size: 10px;
+  min-width: 60px;
+  flex-shrink: 0;
+}
+
+.commentary-text {
+  color: #0a0;
+  flex: 1;
+}
+
+/* No data message */
+.no-data-message {
+  text-align: center;
+  padding: 40px 20px;
+  color: #080;
+}
+
+.loading-indicator {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  animation: pulse 2s infinite;
+}
+
+.loading-details {
+  font-size: 12px;
+  color: #060;
 }
 </style>

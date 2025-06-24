@@ -1,5 +1,8 @@
 import { query, transaction } from '../db/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import { gameRandom } from '../utils/seededRandom.js';
+import { LLMConfig } from '../utils/llmConfig.js';
+import fetch from 'node-fetch';
 
 export class CrewRepository {
   async create(crewData) {
@@ -16,17 +19,17 @@ export class CrewRepository {
     
     const id = uuidv4();
     
-    // Set default skill levels
-    const skillEngineering = skills.engineering || Math.floor(Math.random() * 50) + 10;
-    const skillPiloting = skills.piloting || Math.floor(Math.random() * 50) + 10;
-    const skillSocial = skills.social || Math.floor(Math.random() * 50) + 10;
-    const skillCombat = skills.combat || Math.floor(Math.random() * 50) + 10;
+    // Set default skill levels using seeded random
+    const skillEngineering = skills.engineering || gameRandom.chance.integer({ min: 10, max: 60 });
+    const skillPiloting = skills.piloting || gameRandom.chance.integer({ min: 10, max: 60 });
+    const skillSocial = skills.social || gameRandom.chance.integer({ min: 10, max: 60 });
+    const skillCombat = skills.combat || gameRandom.chance.integer({ min: 10, max: 60 });
     
-    // Set default personality traits
-    const traitBravery = personality.bravery || Math.floor(Math.random() * 60) + 20;
-    const traitLoyalty = personality.loyalty || Math.floor(Math.random() * 60) + 20;
-    const traitAmbition = personality.ambition || Math.floor(Math.random() * 60) + 20;
-    const traitWorkEthic = personality.workEthic || Math.floor(Math.random() * 60) + 20;
+    // Set default personality traits using seeded random
+    const traitBravery = personality.bravery || gameRandom.chance.integer({ min: 20, max: 80 });
+    const traitLoyalty = personality.loyalty || gameRandom.chance.integer({ min: 20, max: 80 });
+    const traitAmbition = personality.ambition || gameRandom.chance.integer({ min: 20, max: 80 });
+    const traitWorkEthic = personality.workEthic || gameRandom.chance.integer({ min: 20, max: 80 });
     
     const result = await query(
       `INSERT INTO crew_members (
@@ -62,6 +65,13 @@ export class CrewRepository {
   }
 
   async findByShipId(shipId) {
+    // Validate UUID format to prevent database errors
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(shipId)) {
+      console.warn(`Invalid ship ID format: ${shipId}`);
+      return [];
+    }
+
     const result = await query(
       `SELECT id, ship_id, name, age, homeworld, culture,
               skill_engineering, skill_piloting, skill_social, skill_combat,
@@ -124,19 +134,23 @@ export class CrewRepository {
     
     if (skills.engineering !== undefined) {
       updates.push(`skill_engineering = $${paramIndex++}`);
-      values.push(Math.max(0, Math.min(100, skills.engineering)));
+      const clampedEng = skills.engineering < 0 ? 0 : (skills.engineering > 100 ? 100 : skills.engineering);
+      values.push(clampedEng);
     }
     if (skills.piloting !== undefined) {
       updates.push(`skill_piloting = $${paramIndex++}`);
-      values.push(Math.max(0, Math.min(100, skills.piloting)));
+      const clampedPilot = skills.piloting < 0 ? 0 : (skills.piloting > 100 ? 100 : skills.piloting);
+      values.push(clampedPilot);
     }
     if (skills.social !== undefined) {
       updates.push(`skill_social = $${paramIndex++}`);
-      values.push(Math.max(0, Math.min(100, skills.social)));
+      const clampedSocial = skills.social < 0 ? 0 : (skills.social > 100 ? 100 : skills.social);
+      values.push(clampedSocial);
     }
     if (skills.combat !== undefined) {
       updates.push(`skill_combat = $${paramIndex++}`);
-      values.push(Math.max(0, Math.min(100, skills.combat)));
+      const clampedCombat = skills.combat < 0 ? 0 : (skills.combat > 100 ? 100 : skills.combat);
+      values.push(clampedCombat);
     }
     
     if (updates.length === 0) return null;
@@ -161,15 +175,18 @@ export class CrewRepository {
     
     if (status.health !== undefined) {
       updates.push(`health = $${paramIndex++}`);
-      values.push(Math.max(0, Math.min(100, status.health)));
+      const clampedHealth = status.health < 0 ? 0 : (status.health > 100 ? 100 : status.health);
+      values.push(clampedHealth);
     }
     if (status.morale !== undefined) {
       updates.push(`morale = $${paramIndex++}`);
-      values.push(Math.max(0, Math.min(100, status.morale)));
+      const clampedMorale = status.morale < 0 ? 0 : (status.morale > 100 ? 100 : status.morale);
+      values.push(clampedMorale);
     }
     if (status.fatigue !== undefined) {
       updates.push(`fatigue = $${paramIndex++}`);
-      values.push(Math.max(0, Math.min(100, status.fatigue)));
+      const clampedFatigue = status.fatigue < 0 ? 0 : (status.fatigue > 100 ? 100 : status.fatigue);
+      values.push(clampedFatigue);
     }
     
     if (updates.length === 0) return null;
@@ -231,7 +248,7 @@ export class CrewRepository {
   }
 
   async updateRelationship(crewId1, crewId2, relationshipValue) {
-    const value = Math.max(-100, Math.min(100, relationshipValue));
+    const value = relationshipValue < -100 ? -100 : (relationshipValue > 100 ? 100 : relationshipValue);
     
     const result = await query(
       `INSERT INTO crew_relationships (crew_member_id, other_crew_member_id, relationship_value)
@@ -283,5 +300,144 @@ export class CrewRepository {
     );
     
     return result.rows;
+  }
+
+  async generateAvailableCrew(count = 5) {
+    const llmConfig = new LLMConfig();
+    const crew = [];
+    
+    const homeworlds = [
+      'Earth', 'Mars', 'Luna', 'Europa', 'Titan', 'Callisto', 'Ganymede',
+      'Phobos', 'Asteroid-7', 'Ceres Station', 'Proxima Base', 'New Geneva'
+    ];
+    
+    for (let i = 0; i < count; i++) {
+      try {
+        // Use chance.js for base attributes
+        const { name, culture } = gameRandom.generateCrewName();
+        const homeworld = gameRandom.chance.pickone(homeworlds);
+        const age = gameRandom.chance.integer({ min: 22, max: 55 });
+        const skills = gameRandom.generateCrewSkills();
+        const traits = gameRandom.generateCrewTraits();
+        
+        // Generate LLM backstory and personality
+        let backstory = "Standard personnel file.";
+        let employmentNotes = "No additional notes.";
+        
+        if (llmConfig.isConfigured()) {
+          const prompt = `You are HR personnel database for Spacepunk Logistics. Generate corporate backstory for:
+
+NAME: ${name}
+AGE: ${age}
+HOMEWORLD: ${homeworld}
+CULTURE: ${culture}
+SKILLS: Engineering ${skills.engineering}, Piloting ${skills.piloting}, Social ${skills.social}, Combat ${skills.combat}
+PERSONALITY: ${traits.extroversion > 50 ? 'Extroverted' : 'Introverted'}, ${traits.thinking > 50 ? 'Analytical' : 'People-focused'}, ${traits.sensing > 50 ? 'Practical' : 'Visionary'}
+ARCHETYPE: ${traits.dominant_archetype} (primary personality driver)
+
+Write 2-3 sentences of corporate HR backstory in cynical space trucking tone. Include previous employment, why they're available for hire, and one memorable workplace incident. Subtly reference their ${traits.dominant_archetype} archetype in corporate euphemisms.
+
+ARCHETYPE CONTEXT:
+- innocent: naive optimism, seeks harmony
+- sage: wisdom-seeking, analytical
+- explorer: freedom-loving, independent  
+- outlaw: rule-breaking, revolutionary
+- magician: transformative, visionary
+- hero: courageous, determined
+- lover: relationship-focused, passionate
+- jester: humor, disrupts status quo
+- caregiver: nurturing, protective
+- creator: innovative, artistic
+- ruler: leadership, control
+- orphan: realistic, down-to-earth
+
+Format as JSON:
+{
+  "backstory": "...",
+  "employment_notes": "..."
+}`;
+
+          try {
+            const response = await fetch(llmConfig.getEndpoint(), {
+              method: 'POST',
+              headers: llmConfig.config.headers,
+              body: JSON.stringify({
+                model: llmConfig.config.model,
+                messages: [{ role: 'user', content: prompt }],
+                max_tokens: 200,
+                temperature: 0.8
+              })
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              const content = data.choices[0].message.content;
+              const jsonMatch = content.match(/\{[\s\S]*\}/);
+              
+              if (jsonMatch) {
+                const parsed = JSON.parse(jsonMatch[0]);
+                backstory = parsed.backstory || backstory;
+                employmentNotes = parsed.employment_notes || employmentNotes;
+              }
+            }
+          } catch (llmError) {
+            console.log('LLM generation failed, using chance.js fallback');
+          }
+        }
+        
+        // Calculate hiring cost based on total skills using chance.js  
+        const totalSkills = Object.values(skills).reduce((sum, skill) => sum + skill, 0);
+        const baseCost = 300 + (totalSkills / 4) * 3;
+        const costVariation = gameRandom.chance.integer({ min: -50, max: 50 });
+        const hiringCost = baseCost + costVariation;
+        
+        const crewMember = {
+          id: uuidv4(),
+          name,
+          age,
+          homeworld,
+          culture,
+          cultural_background: culture,
+          skill_engineering: skills.engineering,
+          skill_piloting: skills.piloting,
+          skill_social: skills.social,
+          skill_combat: skills.combat,
+          trait_bravery: traits.bravery,
+          trait_loyalty: traits.loyalty,
+          trait_ambition: traits.ambition,
+          trait_work_ethic: traits.work_ethic,
+          trait_extroversion: traits.extroversion,
+          trait_thinking: traits.thinking,
+          trait_sensing: traits.sensing,
+          trait_judging: traits.judging,
+          archetype_innocent: traits.innocent,
+          archetype_sage: traits.sage,
+          archetype_explorer: traits.explorer,
+          archetype_outlaw: traits.outlaw,
+          archetype_magician: traits.magician,
+          archetype_hero: traits.hero,
+          archetype_lover: traits.lover,
+          archetype_jester: traits.jester,
+          archetype_caregiver: traits.caregiver,
+          archetype_creator: traits.creator,
+          archetype_ruler: traits.ruler,
+          archetype_orphan: traits.orphan,
+          dominant_archetype: traits.dominant_archetype,
+          hiring_cost: hiringCost,
+          health: gameRandom.chance.integer({ min: 90, max: 100 }),
+          morale: gameRandom.chance.integer({ min: 60, max: 90 }),
+          fatigue: gameRandom.chance.integer({ min: 10, max: 30 }),
+          backstory,
+          employment_notes: employmentNotes
+        };
+        
+        crew.push(crewMember);
+      } catch (error) {
+        console.error('Error generating crew member:', error);
+        // Skip this crew member if generation fails completely
+      }
+    }
+    
+    return crew;
   }
 }

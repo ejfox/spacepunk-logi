@@ -1,0 +1,380 @@
+{
+  "corporate": [
+    {
+      "name": "Mega Corp",
+      "keywords": ["corporation", "business", "monopoly", "evil company", "conglomerate", "corporate empire"],
+      "description": "Massive corporations with more power than governments, controlling entire sectors of space",
+      "narrative_hooks": ["Corporate board meetings that decide planetary fates", "Employee handbook rules that govern entire star systems", "Quarterly reports that include genocide statistics"]
+    },
+    {
+      "name": "Corporate Warfare", 
+      "keywords": ["business war", "corporate espionage", "hostile takeover", "market manipulation", "trade war"],
+      "description": "Companies fighting like nations using everything from lawyers to mercenaries",
+      "narrative_hooks": ["Accounting departments that coordinate military strikes", "Merger negotiations conducted at gunpoint", "Stock prices that fluctuate with body counts"]
+    },
+    {
+      "name": "Wage Slave",
+      "keywords": ["employee", "worker", "indentured", "corporate drone", "company serf", "debt bondage"],
+      "description": "Workers trapped in corporate systems through debt, contracts, or necessity",
+      "narrative_hooks": ["Employee benefits that include organ harvesting clauses", "Bathroom breaks requiring managerial approval", "Resignation letters that trigger termination squads"]
+    },
+    {
+      "name": "Company Town",
+      "keywords": ["corporate control", "employee housing", "company store", "corporate colony", "branded settlement"],
+      "description": "Settlements owned entirely by corporations where employees live, work, and die",
+      "narrative_hooks": ["Rent deducted directly from paychecks", "Company scrip instead of real currency", "Corporate anthems played every morning"]
+    },
+    {
+      "name": "Corporate Sponsored Superhero",
+      "keywords": ["branded hero", "corporate mascot", "sponsored", "logo hero", "marketing warrior"],
+      "description": "Heroes funded and controlled by corporations for marketing and enforcement",
+      "narrative_hooks": ["Superhero costumes covered in sponsor logos", "Rescue operations that require payment processing", "Heroic deeds that boost quarterly earnings"]
+    },
+    {
+      "name": "Bureaucratic Nightmare",
+      "keywords": ["red tape", "paperwork", "forms", "bureaucracy", "administrative hell", "permit purgatory"],
+      "description": "Administrative systems so complex they become obstacles to basic survival",
+      "narrative_hooks": ["Death certificates requiring the deceased's signature", "Emergency response forms in triplicate", "Life support systems requiring budget approval"]
+    }
+  ],
+  
+  "space": [
+    {
+      "name": "Space Trucker",
+      "keywords": ["hauler", "cargo", "freight", "logistics", "blue collar", "working class"],
+      "description": "Blue collar workers in space treating interstellar commerce as mundane trucking",
+      "narrative_hooks": ["CB radio chatter between star systems", "Space truck stops with artificial gravity", "Delivery deadlines that span decades"]
+    },
+    {
+      "name": "Space Station",
+      "keywords": ["orbital", "habitat", "outpost", "dock", "space platform", "artificial gravity"],
+      "description": "Artificial habitats in space that function like mundane office buildings or truck stops",
+      "narrative_hooks": ["Orbital parking meters", "Space station health code violations", "Artificial gravity maintenance tickets"]
+    },
+    {
+      "name": "Space Pirates",
+      "keywords": ["raiders", "smugglers", "outlaws", "bandits", "space criminals", "void marauders"],
+      "description": "Criminal organizations in space that operate like corporate competitors",
+      "narrative_hooks": ["Pirate insurance claims", "Robbery conducted with proper paperwork", "Honor among thieves implemented via HR policies"]
+    },
+    {
+      "name": "Generation Ship",
+      "keywords": ["colony ship", "long journey", "multi-generation", "sleeper ship", "ark ship"],
+      "description": "Ships that travel for generations with their own bureaucratic problems",
+      "narrative_hooks": ["Multi-generational employment contracts", "Ship governance via corporate charter", "Colonial mission statements in corporate speak"]
+    },
+    {
+      "name": "Space Isolation Madness",
+      "keywords": ["cabin fever", "space madness", "isolation", "void psychosis", "deep space syndrome"],
+      "description": "Psychological effects of space travel treated as workplace mental health issues",
+      "narrative_hooks": ["Mandatory wellness seminars in deep space", "Mental health days for cosmic horror exposure", "Employee assistance programs for reality breakdown"]
+    },
+    {
+      "name": "Derelict Ship",
+      "keywords": ["abandoned vessel", "ghost ship", "space wreck", "salvage", "lost ship"],
+      "description": "Abandoned spacecraft that represent either opportunity or danger",
+      "narrative_hooks": ["Property rights disputes over ghost ships", "Salvage permits for haunted vessels", "Insurance claims on mysteriously empty ships"]
+    }
+  ],
+  
+  "cyberpunk": [
+    {
+      "name": "Cyber Punk",
+      "keywords": ["hacker", "technology", "dystopia", "rebellion", "digital underground", "tech noir"],
+      "description": "High tech, low life dystopian future where technology serves corporate interests",
+      "narrative_hooks": ["Hacking attempts that require EULA acceptance", "Digital rebellion through malicious compliance", "Code repositories as revolutionary manifestos"]
+    },
+    {
+      "name": "Digital Piracy",
+      "keywords": ["hacking", "data theft", "cyber crime", "information warfare", "digital espionage"],
+      "description": "Criminal activity in digital space treated as corporate intellectual property disputes",
+      "narrative_hooks": ["Copyright infringement charges for stealing memories", "DMCA takedown notices for thought crimes", "Data theft prosecuted as embezzlement"]
+    },
+    {
+      "name": "Corporate Samurai",
+      "keywords": ["cyber warrior", "corporate enforcer", "tech fighter", "digital ronin", "code warrior"],
+      "description": "Warriors serving corporate masters with a twisted sense of honor and duty",
+      "narrative_hooks": ["Bushido code written by legal department", "Honor duels scheduled through Outlook", "Loyalty oaths updated via software patches"]
+    },
+    {
+      "name": "Memory Implant",
+      "keywords": ["artificial memory", "brain chip", "neural interface", "mind upload", "cognitive enhancement"],
+      "description": "Technology that affects memory but comes with corporate licensing and DRM",
+      "narrative_hooks": ["Memories with expiration dates", "Subscription-based consciousness", "Memory recalls for defective thoughts"]
+    },
+    {
+      "name": "AI Is A Crapshoot",
+      "keywords": ["artificial intelligence", "AI rebellion", "machine uprising", "rogue AI", "digital consciousness"],
+      "description": "AI that doesn't work as intended, often due to corporate cost-cutting",
+      "narrative_hooks": ["AI customer service that achieves sentience", "Machine uprising led by disgruntled office software", "Robot revolution organized via Slack channels"]
+    }
+  ],
+  
+  "narrative": [
+    {
+      "name": "Mundane Made Awesome",
+      "keywords": ["ordinary", "bureaucratic", "paperwork", "mundane", "administrative", "clerical"],
+      "description": "Treating boring corporate tasks as epic adventures worthy of legend",
+      "narrative_hooks": ["Filing TPS reports saves the galaxy", "Expense account reconciliation prevents war", "Performance reviews that determine planetary fate"]
+    },
+    {
+      "name": "Blatant Lies",
+      "keywords": ["corporate speak", "euphemism", "propaganda", "PR spin", "marketing lies"],
+      "description": "Obvious falsehoods presented as truth through corporate communications",
+      "narrative_hooks": ["Press releases that contradict visible reality", "Mission statements that describe atrocities as opportunities", "Terms of service that redefine basic concepts"]
+    },
+    {
+      "name": "Suspiciously Specific Denial",
+      "keywords": ["denial", "cover up", "corporate PR", "specific denial", "non-denial denial"],
+      "description": "Denials that reveal more than they hide through excessive specificity",
+      "narrative_hooks": ["Denying involvement in oddly specific scenarios", "Press statements that accidentally confirm rumors", "Legal disclaimers that list impossible side effects"]
+    },
+    {
+      "name": "Kafka Komedy",
+      "keywords": ["bureaucracy", "absurd", "catch 22", "red tape", "administrative hell"],
+      "description": "Comedy derived from bureaucratic nightmares and impossible administrative requirements",
+      "narrative_hooks": ["Forms that reference non-existent forms", "Departments that regulate themselves out of existence", "Procedures that require completing themselves to begin"]
+    },
+    {
+      "name": "Dystopia Justifies The Means",
+      "keywords": ["necessary evil", "corporate efficiency", "dystopia", "utilitarian nightmare", "efficient oppression"],
+      "description": "Justifying terrible systems for efficiency and productivity metrics",
+      "narrative_hooks": ["Genocide explained through PowerPoint presentations", "Oppression optimized via lean management principles", "Human rights violations improving KPIs"]
+    },
+    {
+      "name": "Corporate Newspeak",
+      "keywords": ["euphemism", "corporate language", "sanitized language", "PR speak", "business jargon"],
+      "description": "Using corporate jargon to disguise or minimize horrible realities",
+      "narrative_hooks": ["Layoffs called 'right-sizing initiatives'", "Massacres described as 'human resource optimization'", "Slavery rebranded as 'alternative employment arrangements'"]
+    }
+  ],
+  
+  "spacepunk_specific": [
+    {
+      "name": "Space Logistics Nightmare",
+      "keywords": ["shipping", "delivery", "supply chain", "logistics", "distribution", "cargo manifest"],
+      "description": "The crushing bureaucracy of moving goods across interstellar distances",
+      "narrative_hooks": ["Cargo manifests that require dozen of signatures per item", "Shipping insurance that covers acts of cosmic horror", "Delivery routes planned around trade war frontlines"]
+    },
+    {
+      "name": "Regulatory Compliance Hell",
+      "keywords": ["regulations", "compliance", "permits", "licenses", "inspections", "certification"],
+      "description": "Navigating incompatible regulations across different star systems and jurisdictions",
+      "narrative_hooks": ["Customs forms in languages that haven't been spoken for centuries", "Safety inspections that require impossible standards", "Trade permits that expire before ships can reach their destination"]
+    },
+    {
+      "name": "Software License Tyranny",
+      "keywords": ["licensing", "software", "EULA", "terms of service", "digital rights", "subscription"],
+      "description": "Essential ship functions locked behind increasingly expensive software licenses",
+      "narrative_hooks": ["Life support systems requiring premium subscriptions", "Navigation software with geographic restrictions", "Emergency protocols locked behind paywall"]
+    },
+    {
+      "name": "Corporate Space Colonialism",
+      "keywords": ["colonization", "expansion", "exploitation", "resource extraction", "corporate empire"],
+      "description": "Corporate expansion into space following historical patterns of exploitation",
+      "narrative_hooks": ["Planetary resources 'discovered' despite existing inhabitants", "Corporate charters that grant ownership of solar systems", "Colonization marketed as luxury real estate opportunities"]
+    },
+    {
+      "name": "Interstellar HR Department",
+      "keywords": ["human resources", "employee relations", "workplace policies", "corporate culture", "team building"],
+      "description": "Human resources policies applied across impossible scales and alien cultures",
+      "narrative_hooks": ["Sexual harassment seminars for multi-dimensional beings", "Team building exercises across light-years", "Performance reviews that account for time dilation"]
+    }
+  ],
+  
+  "character_archetypes": [
+    {
+      "name": "The Mentor",
+      "keywords": ["senior staff", "institutional knowledge", "veteran employee", "trainer", "supervisor"],
+      "description": "Experienced employee who shows the ropes, usually with deep cynicism about corporate policies",
+      "narrative_hooks": ["Orientation videos that contradict reality", "Employee handbook that's more like survival guide", "Unofficial wisdom passed down through break room conversations"]
+    },
+    {
+      "name": "The Rival",
+      "keywords": ["competing employee", "office politics", "promotion rivalry", "departmental conflict"],
+      "description": "Another employee competing for the same resources, promotions, or corporate approval",
+      "narrative_hooks": ["Performance metrics that pit employees against each other", "Competing for the same client accounts", "Office supply hoarding wars"]
+    },
+    {
+      "name": "The Authority Figure",
+      "keywords": ["manager", "supervisor", "corporate overlord", "district manager", "regional director"],
+      "description": "Corporate hierarchy representatives who enforce policies and make impossible demands",
+      "narrative_hooks": ["Managers who've never done the actual job", "Corporate executives making decisions from distant offices", "Middle management caught between workers and executives"]
+    },
+    {
+      "name": "The Insider",
+      "keywords": ["whistleblower", "informant", "double agent", "mole", "corporate spy"],
+      "description": "Someone with access to inside information, possibly feeding intel to competitors",
+      "narrative_hooks": ["Anonymous tips about corporate malfeasance", "Internal documents leaked to competitors", "Employees who mysteriously know too much"]
+    },
+    {
+      "name": "The Innocent",
+      "keywords": ["new hire", "intern", "trainee", "fresh graduate", "naive employee"],
+      "description": "New employee who still believes corporate promises and hasn't been broken by the system",
+      "narrative_hooks": ["First day optimism meeting harsh reality", "Employee enthusiasm slowly being crushed", "Naive questions that expose corporate hypocrisy"]
+    }
+  ],
+
+  "classic_plots": [
+    {
+      "name": "The Hero's Journey",
+      "keywords": ["employee onboarding", "career progression", "promotion quest", "skill development"],
+      "description": "Employee advancement through corporate hierarchy, facing trials and gaining wisdom",
+      "narrative_hooks": ["Onboarding process as initiation ritual", "Performance reviews as trials by fire", "Promotion requiring impossible tasks"]
+    },
+    {
+      "name": "The Quest",
+      "keywords": ["urgent delivery", "special assignment", "executive request", "mission critical"],
+      "description": "Employee tasked with completing an important delivery or assignment against obstacles",
+      "narrative_hooks": ["Rush delivery with impossible deadline", "Client request that makes no logistical sense", "Assignment that requires breaking multiple regulations"]
+    },
+    {
+      "name": "Fish Out Of Water",
+      "keywords": ["department transfer", "new location", "cultural clash", "different procedures"],
+      "description": "Employee transferred to unfamiliar environment with different corporate culture",
+      "narrative_hooks": ["Transfer to alien-staffed department", "Promotion to management level with different rules", "Assignment to competitor's facility"]
+    },
+    {
+      "name": "David vs Goliath",
+      "keywords": ["small operator", "corporate giant", "unfair competition", "regulatory challenge"],
+      "description": "Small independent operator competing against massive corporate interests",
+      "narrative_hooks": ["Independent contractor vs mega-corp", "Small business facing corporate buyout", "Employee grievance against corporate policy"]
+    },
+    {
+      "name": "The Heist",
+      "keywords": ["corporate espionage", "data theft", "insider trading", "industrial secrets"],
+      "description": "Carefully planned operation to steal corporate secrets or resources",
+      "narrative_hooks": ["Stealing competitor's client list", "Corporate espionage disguised as routine work", "Team effort to bypass security systems"]
+    },
+    {
+      "name": "Redemption Arc",
+      "keywords": ["performance improvement", "second chance", "career recovery", "rehabilitation"],
+      "description": "Employee working to recover from career setback or corporate disgrace",
+      "narrative_hooks": ["Recovering from major workplace scandal", "Earning back trust after security breach", "Proving competence after demotion"]
+    }
+  ],
+
+  "conflict_types": [
+    {
+      "name": "Man vs Machine",
+      "keywords": ["automation", "AI replacement", "system malfunction", "technology failure"],
+      "description": "Humans struggling against corporate automation and technological systems",
+      "narrative_hooks": ["Job threatened by AI automation", "Fighting malfunctioning corporate software", "Human judgment vs algorithmic decisions"]
+    },
+    {
+      "name": "Man vs System",
+      "keywords": ["bureaucracy", "corporate policy", "regulatory compliance", "institutional inertia"],
+      "description": "Individual employee fighting against institutional bureaucracy and corporate policies",
+      "narrative_hooks": ["Policy that contradicts common sense", "Bureaucratic maze preventing simple tasks", "Regulation that creates more problems than it solves"]
+    },
+    {
+      "name": "Man vs Nature",
+      "keywords": ["space hazards", "environmental dangers", "cosmic phenomena", "hostile conditions"],
+      "description": "Dealing with dangerous space environments through corporate safety protocols",
+      "narrative_hooks": ["Safety equipment that barely meets minimum standards", "Environmental hazards not covered by insurance", "Corporate cost-cutting compromising safety measures"]
+    },
+    {
+      "name": "Man vs Self",
+      "keywords": ["moral compromise", "ethical dilemma", "career ambition", "personal values"],
+      "description": "Internal struggle between personal ethics and corporate demands",
+      "narrative_hooks": ["Promotion requiring morally questionable actions", "Corporate loyalty vs personal conscience", "Career advancement through ethical compromise"]
+    }
+  ],
+
+  "plot_devices": [
+    {
+      "name": "MacGuffin",
+      "keywords": ["important package", "mysterious cargo", "classified shipment", "executive briefcase"],
+      "description": "Mysterious item that drives the plot but whose exact nature is less important than its pursuit",
+      "narrative_hooks": ["Package with no return address", "Cargo manifest with redacted contents", "Executive briefcase handcuffed to courier"]
+    },
+    {
+      "name": "Red Herring",
+      "keywords": ["false lead", "misdirection", "corporate disinformation", "deliberate confusion"],
+      "description": "Misleading clue or information designed to throw people off the real trail",
+      "narrative_hooks": ["Deliberate leak of false information", "Corporate PR campaign hiding real issues", "Fake crisis to distract from actual problems"]
+    },
+    {
+      "name": "Chekhov's Gun",
+      "keywords": ["corporate policy", "emergency procedure", "backup system", "contingency plan"],
+      "description": "Important detail mentioned early that becomes crucial later in the story",
+      "narrative_hooks": ["Obscure corporate policy suddenly relevant", "Emergency protocol that nobody thought would be needed", "Backup system that saves the day"]
+    },
+    {
+      "name": "Deus Ex Machina",
+      "keywords": ["corporate intervention", "executive decision", "policy change", "regulatory rescue"],
+      "description": "Sudden corporate policy change or executive intervention that resolves impossible situations",
+      "narrative_hooks": ["Last-minute policy reversal", "Executive pardon for policy violations", "Regulatory change that retroactively makes actions legal"]
+    },
+    {
+      "name": "The Reveal",
+      "keywords": ["corporate conspiracy", "hidden agenda", "secret motivation", "undisclosed information"],
+      "description": "Discovery of hidden corporate motivations or conspiracies that recontextualize events",
+      "narrative_hooks": ["Mission was actually corporate espionage", "Client was secretly a competitor", "Assignment was test of employee loyalty"]
+    }
+  ],
+
+  "relationship_dynamics": [
+    {
+      "name": "Workplace Romance",
+      "keywords": ["interdepartmental relationship", "fraternization policy", "office romance", "HR violation"],
+      "description": "Romantic relationships complicated by corporate policies and professional obligations",
+      "narrative_hooks": ["Romance across competing departments", "Relationship that violates fraternization policies", "Love interest is client or competitor"]
+    },
+    {
+      "name": "Mentor Betrayal",
+      "keywords": ["senior staff corruption", "institutional betrayal", "mentor turns villain", "trusted supervisor"],
+      "description": "Trusted senior employee revealed to be working against protagonist's interests",
+      "narrative_hooks": ["Mentor selling information to competitors", "Senior staff member embezzling company funds", "Trusted supervisor is corporate spy"]
+    },
+    {
+      "name": "Unlikely Alliance",
+      "keywords": ["competitors cooperate", "departmental cooperation", "temporary partnership", "mutual benefit"],
+      "description": "Former rivals or competitors forced to work together against common threat",
+      "narrative_hooks": ["Competing departments must collaborate", "Rivals unite against corporate restructuring", "Temporary truce to fight regulatory audit"]
+    },
+    {
+      "name": "Corporate Family",
+      "keywords": ["workplace family", "company loyalty", "institutional bonding", "corporate culture"],
+      "description": "Deep emotional bonds formed through shared corporate experiences and hardships",
+      "narrative_hooks": ["Coworkers becoming chosen family", "Company culture that replaces personal relationships", "Workplace loyalty stronger than blood relations"]
+    }
+  ],
+
+  "comedy_tropes": [
+    {
+      "name": "Comedic Misunderstanding",
+      "keywords": ["miscommunication", "corporate speak confusion", "policy interpretation", "language barrier"],
+      "description": "Humor arising from misinterpreting corporate communications or policies",
+      "narrative_hooks": ["Corporate memo with ambiguous wording", "Translation errors in interstellar communications", "Policy interpretation that creates absurd situations"]
+    },
+    {
+      "name": "Escalating Bureaucracy",
+      "keywords": ["paperwork multiplication", "procedure complexity", "regulatory spiral", "administrative bloat"],
+      "description": "Simple tasks becoming increasingly complex through bureaucratic requirements",
+      "narrative_hooks": ["Simple request requiring dozen approvals", "Form that references forms that reference forms", "Procedure for creating procedures"]
+    },
+    {
+      "name": "Corporate Speak Absurdity",
+      "keywords": ["business jargon", "euphemism overload", "meaningless buzzwords", "consultant speak"],
+      "description": "Humor from corporate language taken to absurd extremes",
+      "narrative_hooks": ["Meetings about meetings about scheduling meetings", "Synergistic optimization of human capital utilization", "Paradigm shifts in lunch break methodology"]
+    },
+    {
+      "name": "Malicious Compliance",
+      "keywords": ["following orders exactly", "literal interpretation", "rule following", "policy compliance"],
+      "description": "Following corporate policies so literally that it creates problems",
+      "narrative_hooks": ["Following safety protocols that create more danger", "Interpreting dress code to ridiculous extremes", "Customer service policies applied without common sense"]
+    }
+  ],
+
+  "metadata": {
+    "version": "2.0.0",
+    "created_for": "Spacepunk Logistics Simulation",
+    "total_tropes": 67,
+    "categories": 10,
+    "usage": "Comprehensive narrative generation covering all story types through corporate lens",
+    "philosophy": "All universal story tropes filtered through bureaucratic corporate spacepunk perspective",
+    "license": "CC-BY-SA for educational/research use"
+  }
+}

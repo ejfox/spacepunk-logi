@@ -258,7 +258,31 @@ class TrainingQueue extends EventEmitter {
 
       // Calculate progress for this tick
       const progress = this.calculateTrainingProgress(session, crewMember);
-      session.progressMade += progress;
+      const currentProgress = Number(session.progressMade || 0);
+      const calculatedProgress = Number(progress);
+      
+      // Validate numbers before calculation
+      if (isNaN(currentProgress) || isNaN(calculatedProgress)) {
+        console.error(`Invalid training progress calculation:`, {
+          crewMemberId,
+          sessionProgressMade: session.progressMade,
+          currentProgress,
+          tickProgress: progress,
+          calculatedProgress,
+          types: {
+            sessionProgressMadeType: typeof session.progressMade,
+            progressType: typeof progress
+          }
+        });
+        // Reset to safe values
+        session.progressMade = 0;
+        continue;
+      }
+      
+      // Ensure progressMade is a number and log the calculation
+      const newProgress = currentProgress + calculatedProgress;
+      console.log(`Training progress update: ${currentProgress} + ${calculatedProgress} = ${newProgress}`);
+      session.progressMade = newProgress;
       session.totalTicks++;
 
       // Check for burnout

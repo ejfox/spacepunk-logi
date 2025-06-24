@@ -389,10 +389,37 @@ export class ShipLogRepository {
   }
 
   parseJSON(jsonString, fallback = {}) {
+    if (!jsonString || jsonString === null || jsonString === 'null' || jsonString === '') {
+      return fallback;
+    }
+    
     try {
-      return jsonString ? JSON.parse(jsonString) : fallback;
+      // Handle case where jsonString is already an object
+      if (typeof jsonString === 'object') {
+        return jsonString;
+      }
+      
+      // If it's a string that looks like it might be already parsed
+      if (typeof jsonString === 'string' && (jsonString === '[]' || jsonString === '{}')) {
+        return JSON.parse(jsonString);
+      }
+      
+      // Try to parse as JSON
+      if (typeof jsonString === 'string') {
+        return JSON.parse(jsonString);
+      }
+      
+      return jsonString;
     } catch (error) {
-      console.warn('Failed to parse JSON:', jsonString);
+      // Only log if it's an actual parsing issue, not if we're getting invalid strings
+      if (typeof jsonString === 'string' && jsonString.trim().length > 0) {
+        console.warn('ShipLogRepository: Failed to parse JSON field:', {
+          value: jsonString.substring(0, 100),
+          type: typeof jsonString,
+          length: jsonString?.length,
+          error: error.message
+        });
+      }
       return fallback;
     }
   }

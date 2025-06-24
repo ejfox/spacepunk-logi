@@ -1,4 +1,4 @@
-import { query, transaction } from '../db/index.js';
+import { query, transaction, getClient } from '../db/index.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class TrainingQueueRepository {
@@ -61,6 +61,13 @@ export class TrainingQueueRepository {
   }
 
   async findActiveByShip(shipId) {
+    // Validate UUID format to prevent database errors
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(shipId)) {
+      console.warn(`Invalid ship ID format: ${shipId}`);
+      return [];
+    }
+
     const result = await query(
       `SELECT tq.*, cm.name as crew_member_name, cm.skill_engineering, 
               cm.skill_piloting, cm.skill_social, cm.skill_combat,
@@ -303,18 +310,34 @@ export class TrainingQueueRepository {
   }
 
   async batchUpdateProgress(progressUpdates) {
-    const client = await transaction();
+    const client = await getClient();
     
     try {
+      await client.query('BEGIN');
       const results = [];
       
       for (const update of progressUpdates) {
+        // Ensure all numeric values are properly formatted
+        const numericProgress = Number(update.progressMade);
+        const numericEfficiency = Number(update.efficiency);
+        
+        if (isNaN(numericProgress) || isNaN(numericEfficiency)) {
+          console.error('Invalid numeric values in training update:', {
+            id: update.id,
+            progressMade: update.progressMade,
+            efficiency: update.efficiency,
+            numericProgress,
+            numericEfficiency
+          });
+          continue;
+        }
+        
         const result = await client.query(
           `UPDATE training_queue 
-           SET progress_made = $2, efficiency = $3, burnout = $4, updated_at = NOW()
+           SET progress_made = $2::numeric, efficiency = $3::numeric, burnout = $4, updated_at = NOW()
            WHERE id = $1
            RETURNING *`,
-          [update.id, update.progressMade, update.efficiency, update.burnout]
+          [update.id, numericProgress, numericEfficiency, update.burnout]
         );
         
         if (result.rows.length > 0) {

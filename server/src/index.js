@@ -14,7 +14,7 @@ const app = express();
 const server = createServer(app);
 const wss = new WebSocketServer({ server });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.BACKEND_PORT || process.env.PORT || 3666;
 const TICK_INTERVAL = process.env.TICK_INTERVAL || 10000; // 10 seconds default
 
 app.use(cors());
@@ -47,17 +47,22 @@ setupWebSocketHandlers(wss, tickEngine);
 
 async function start() {
   try {
+    console.log('\n🚀 SPACEPUNK LOGISTICS SERVER');
+    console.log('════════════════════════════════');
+    
     await initDatabase();
-    console.log('Database initialized successfully');
+    console.log('✅ Database connection established');
     
     tickEngine.start();
-    console.log(`Tick engine started with ${TICK_INTERVAL}ms interval`);
+    console.log(`⏰ Game tick engine: ${TICK_INTERVAL/1000}s intervals`);
     
     server.listen(PORT, () => {
-      console.log(`Spacepunk server running on port ${PORT}`);
+      console.log(`🌐 Server running: http://localhost:${PORT}`);
+      console.log(`🔌 WebSocket ready for real-time updates`);
+      console.log('════════════════════════════════\n');
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error('❌ Server startup failed:', error.message);
     process.exit(1);
   }
 }

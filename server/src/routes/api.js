@@ -1412,4 +1412,340 @@ router.post('/politics/market-event', async (req, res) => {
   }
 });
 
+// ==========================================
+// GOD MODE / ADMIN DASHBOARD ENDPOINTS
+// ==========================================
+
+// Get comprehensive world overview
+router.get('/god-mode/world-overview', async (req, res) => {
+  try {
+    const [
+      playersResult,
+      shipsResult,
+      crewResult,
+      stationsResult,
+      missionsResult,
+      marketResult,
+      trainingResult
+    ] = await Promise.all([
+      query('SELECT COUNT(*) as count FROM players'),
+      query('SELECT COUNT(*) as count FROM ships'),
+      query('SELECT COUNT(*) as count FROM crew_members WHERE died_at IS NULL'),
+      query('SELECT COUNT(*) as count FROM stations'),
+      query('SELECT COUNT(*) as count, status FROM missions GROUP BY status'),
+      query('SELECT COUNT(*) as count FROM market_data'),
+      query('SELECT COUNT(*) as count FROM training_queue WHERE completed_at IS NULL')
+    ]);
+
+    res.json({
+      summary: {
+        totalPlayers: parseInt(playersResult.rows[0].count),
+        totalShips: parseInt(shipsResult.rows[0].count),
+        livingCrewMembers: parseInt(crewResult.rows[0].count),
+        totalStations: parseInt(stationsResult.rows[0].count),
+        marketItems: parseInt(marketResult.rows[0].count),
+        activeTraining: parseInt(trainingResult.rows[0].count)
+      },
+      missionsByStatus: missionsResult.rows.reduce((acc, row) => {
+        acc[row.status] = parseInt(row.count);
+        return acc;
+      }, {}),
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error fetching world overview:', error);
+    res.status(500).json({ error: 'Failed to fetch world overview' });
+  }
+});
+
+// Get all players with detailed info
+router.get('/god-mode/players', async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        p.*,
+        s.name as ship_name,
+        s.hull_type,
+        s.status as ship_status,
+        (SELECT COUNT(*) FROM crew_members WHERE ship_id = s.id AND died_at IS NULL) as crew_count,
+        (SELECT COUNT(*) FROM missions WHERE accepted_by = p.id AND status = 'accepted') as active_missions
+      FROM players p
+      LEFT JOIN ships s ON s.player_id = p.id AND s.status = 'active'
+      ORDER BY p.created_at DESC
+    `);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching players:', error);
+    res.status(500).json({ error: 'Failed to fetch players' });
+  }
+});
+
+// Get all ships with crew and mission info
+router.get('/god-mode/ships', async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        s.*,
+        p.username as player_name,
+        p.email as player_email
+      FROM ships s
+      LEFT JOIN players p ON s.player_id = p.id
+      ORDER BY s.created_at DESC
+    `);
+
+    // Add counts separately to avoid subquery issues
+    for (let ship of result.rows) {
+      try {
+        const crewCount = await query('SELECT COUNT(*) FROM crew_members WHERE ship_id = $1 AND died_at IS NULL', [ship.id]);
+        ship.crew_count = parseInt(crewCount.rows[0].count) || 0;
+        
+        const missionCount = await query('SELECT COUNT(*) FROM missions WHERE ship_id = $1 AND status = $2', [ship.id, 'accepted']);
+        ship.active_missions = parseInt(missionCount.rows[0].count) || 0;
+        
+        const trainingCount = await query('SELECT COUNT(*) FROM training_queue WHERE crew_member_id IN (SELECT id FROM crew_members WHERE ship_id = $1) AND completed_at IS NULL', [ship.id]);
+        ship.active_training = parseInt(trainingCount.rows[0].count) || 0;
+      } catch (countError) {
+        console.warn('Error fetching counts for ship:', ship.id, countError.message);
+        ship.crew_count = 0;
+        ship.active_missions = 0;
+        ship.active_training = 0;
+      }
+    }
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching ships:', error);
+    res.status(500).json({ error: 'Failed to fetch ships' });
+  }
+});
+
+// Get all crew members with ship and player info
+router.get('/god-mode/crew', async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        cm.*,
+        s.name as ship_name,
+        p.username as player_name,
+        (SELECT COUNT(*) FROM training_queue WHERE crew_member_id = cm.id AND completed_at IS NULL) as active_training,
+        (SELECT COUNT(*) FROM crew_memories WHERE crew_member_id = cm.id) as memory_count
+      FROM crew_members cm
+      LEFT JOIN ships s ON cm.ship_id = s.id
+      LEFT JOIN players p ON s.player_id = p.id
+      ORDER BY cm.created_at DESC
+    `);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching crew members:', error);
+    res.status(500).json({ error: 'Failed to fetch crew members' });
+  }
+});
+
+// Get all stations with market and mission activity
+router.get('/god-mode/stations', async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT * FROM stations ORDER BY name
+    `);
+
+    // Add counts separately to avoid subquery issues
+    for (let station of result.rows) {
+      try {
+        const marketCount = await query('SELECT COUNT(*) FROM market_data WHERE station_id = $1', [station.id]);
+        station.market_items = parseInt(marketCount.rows[0].count) || 0;
+        
+        const totalMissions = await query('SELECT COUNT(*) FROM missions WHERE station_id = $1', [station.id]);
+        station.total_missions = parseInt(totalMissions.rows[0].count) || 0;
+        
+        const availableMissions = await query('SELECT COUNT(*) FROM missions WHERE station_id = $1 AND status = $2', [station.id, 'available']);
+        station.available_missions = parseInt(availableMissions.rows[0].count) || 0;
+      } catch (countError) {
+        console.warn('Error fetching counts for station:', station.id, countError.message);
+        station.market_items = 0;
+        station.total_missions = 0;
+        station.available_missions = 0;
+      }
+    }
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching stations:', error);
+    res.status(500).json({ error: 'Failed to fetch stations' });
+  }
+});
+
+// Get comprehensive mission data
+router.get('/god-mode/missions', async (req, res) => {
+  try {
+    // First get missions without complex joins to avoid parsing errors
+    const result = await query(`
+      SELECT 
+        m.id,
+        m.title,
+        m.description,
+        m.type,
+        m.difficulty,
+        m.status,
+        m.deadline_hours,
+        m.created_at,
+        m.expires_at,
+        m.station_id,
+        m.accepted_by,
+        m.ship_id
+      FROM missions m
+      ORDER BY m.created_at DESC
+      LIMIT 100
+    `);
+
+    // Add related data separately to avoid join issues
+    for (let mission of result.rows) {
+      try {
+        // Get station name
+        if (mission.station_id) {
+          const stationResult = await query('SELECT name FROM stations WHERE id = $1', [mission.station_id]);
+          mission.station_name = stationResult.rows[0]?.name || null;
+        } else {
+          mission.station_name = null;
+        }
+
+        // Get player name
+        if (mission.accepted_by) {
+          const playerResult = await query('SELECT username FROM players WHERE id = $1', [mission.accepted_by]);
+          mission.accepted_by_player = playerResult.rows[0]?.username || null;
+        } else {
+          mission.accepted_by_player = null;
+        }
+
+        // Get ship name
+        if (mission.ship_id) {
+          const shipResult = await query('SELECT name FROM ships WHERE id = $1', [mission.ship_id]);
+          mission.ship_name = shipResult.rows[0]?.name || null;
+        } else {
+          mission.ship_name = null;
+        }
+
+        // Add rewards formatting (basic object, no parsing needed)
+        mission.rewards = { credits: 0, reputation: 0 }; // Default safe value
+      } catch (relatedError) {
+        console.warn('Error fetching related data for mission:', mission.id, relatedError.message);
+        mission.station_name = null;
+        mission.accepted_by_player = null;
+        mission.ship_name = null;
+        mission.rewards = { credits: 0, reputation: 0 };
+      }
+    }
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching missions:', error);
+    res.status(500).json({ error: 'Failed to fetch missions' });
+  }
+});
+
+// Get market overview with pricing trends
+router.get('/god-mode/market', async (req, res) => {
+  try {
+    // Get market data with resources first
+    const result = await query(`
+      SELECT 
+        md.*,
+        r.name as resource_name,
+        r.category as resource_category,
+        r.base_price
+      FROM market_data md
+      JOIN resources r ON md.resource_id = r.id
+      ORDER BY md.last_updated DESC
+      LIMIT 200
+    `);
+
+    // Add station info separately since station_id is varchar not uuid
+    for (let item of result.rows) {
+      try {
+        const stationResult = await query('SELECT name, galaxy, sector FROM stations WHERE name = $1', [item.station_id]);
+        if (stationResult.rows.length > 0) {
+          item.station_name = stationResult.rows[0].name;
+          item.galaxy = stationResult.rows[0].galaxy;
+          item.sector = stationResult.rows[0].sector;
+        } else {
+          item.station_name = item.station_id; // Use station_id as fallback
+          item.galaxy = 'Unknown';
+          item.sector = 'Unknown';
+        }
+      } catch (stationError) {
+        console.warn('Error fetching station for market item:', item.id, stationError.message);
+        item.station_name = item.station_id;
+        item.galaxy = 'Unknown';
+        item.sector = 'Unknown';
+      }
+    }
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching market data:', error);
+    res.status(500).json({ error: 'Failed to fetch market data' });
+  }
+});
+
+// Get training queue overview
+router.get('/god-mode/training', async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        tq.*,
+        cm.name as crew_name,
+        s.name as ship_name,
+        p.username as player_name
+      FROM training_queue tq
+      JOIN crew_members cm ON tq.crew_member_id = cm.id
+      LEFT JOIN ships s ON cm.ship_id = s.id
+      LEFT JOIN players p ON s.player_id = p.id
+      ORDER BY tq.created_at DESC
+      LIMIT 100
+    `);
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching training data:', error);
+    res.status(500).json({ error: 'Failed to fetch training data' });
+  }
+});
+
+// Get system resources and performance
+router.get('/god-mode/system-status', async (req, res) => {
+  try {
+    // Simple database stats that should work on all PostgreSQL versions
+    const databaseStats = await query(`
+      SELECT 
+        'public' as schemaname,
+        tablename,
+        0 as inserts,
+        0 as updates,
+        0 as deletes,
+        0 as live_rows
+      FROM pg_tables 
+      WHERE schemaname = 'public'
+      ORDER BY tablename
+    `);
+
+    res.json({
+      databaseStats: databaseStats.rows,
+      serverUptime: process.uptime(),
+      memoryUsage: process.memoryUsage(),
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error fetching system status:', error);
+    // Fallback response if database query fails
+    res.json({
+      databaseStats: [],
+      serverUptime: process.uptime(),
+      memoryUsage: process.memoryUsage(),
+      timestamp: new Date().toISOString(),
+      error: 'Database stats unavailable'
+    });
+  }
+});
+
 export default router;

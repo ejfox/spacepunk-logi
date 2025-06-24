@@ -59,10 +59,9 @@ export class MarketRepository {
         r.name as resource_name,
         r.category as resource_category,
         r.base_price,
-        s.name as station_name
+        md.station_id as station_name
       FROM market_data md
       JOIN resources r ON md.resource_id = r.id
-      JOIN stations s ON md.station_id = s.id
       ORDER BY md.station_id, r.category, r.name`
     );
     
@@ -89,9 +88,7 @@ export class MarketRepository {
   }
 
   async updateMarketData(updates) {
-    const client = await transaction();
-    
-    try {
+    return await transaction(async (client) => {
       const results = [];
       
       for (const update of updates) {
@@ -102,7 +99,7 @@ export class MarketRepository {
             supply = $4,
             demand = $5,
             price_trend = $6,
-            updated_at = $7
+            last_updated = $7
           WHERE station_id = $1 AND resource_id = $2
           RETURNING *`,
           [
@@ -121,14 +118,8 @@ export class MarketRepository {
         }
       }
       
-      await client.query('COMMIT');
       return results;
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   async recordPriceHistory(marketDataId, price, supply, demand) {
@@ -164,9 +155,7 @@ export class MarketRepository {
   }
 
   async initializeAllMarkets(stationIds, resourceIds) {
-    const client = await transaction();
-    
-    try {
+    return await transaction(async (client) => {
       const results = [];
       
       for (const stationId of stationIds) {
@@ -204,14 +193,8 @@ export class MarketRepository {
         }
       }
       
-      await client.query('COMMIT');
       return results;
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
+    });
   }
 }
 

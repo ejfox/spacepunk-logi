@@ -1,7 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "Bash(gh issue create:*)"
+      "Bash(gh issue create:*)",
+      "Bash(find:*)",
+      "WebFetch(domain:chancejs.com)",
+      "Bash(pkill:*)",
+      "Bash(kill:*)",
+      "Bash(grep:*)",
+      "Bash(lsof:*)",
+      "Bash(./start-backend.sh:*)",
+      "Bash(docker exec:*)",
+      "Bash(rg:*)",
+      "Bash(docker-compose down:*)",
+      "Bash(npm start)",
+      "Bash(chmod:*)"
     ],
     "deny": []
   }

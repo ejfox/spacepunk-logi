@@ -39,14 +39,14 @@ class MarketSimulation extends EventEmitter {
     
     let newPrice = currentPrice * priceMultiplier;
     
-    const minPrice = basePrice * 0.2;
-    const maxPrice = basePrice * 5.0;
-    newPrice = Math.max(minPrice, Math.min(maxPrice, newPrice));
+    // No price floors or ceilings - let the chaos reign!
+    // Markets can crash to near-zero or spike to astronomical prices
+    // This is peak corporate dysfunction and we're here for it
     
-    return Math.round(newPrice * 100) / 100;
+    return Math.max(0.01, Math.round(newPrice * 100) / 100); // Only prevent negative prices
   }
 
-  simulateSupplyDemand(currentSupply, currentDemand, resourceCategory) {
+  simulateSupplyDemand(currentSupply, currentDemand, resourceCategory, stationId = null, sector = null) {
     const categoryFactors = {
       tech: { supplyVolatility: 0.15, demandVolatility: 0.2 },
       consumable: { supplyVolatility: 0.25, demandVolatility: 0.3 },
@@ -62,15 +62,40 @@ class MarketSimulation extends EventEmitter {
     let newSupply = currentSupply * (1 + supplyChange);
     let newDemand = currentDemand * (1 + demandChange);
     
+    // Apply market events with enhanced scope handling
     this.marketEvents.forEach(event => {
-      if (event.resourceId && event.active) {
+      if (!event.active) return;
+      
+      let eventApplies = false;
+      
+      // Station-specific events
+      if (event.resourceId && event.stationId === stationId) {
+        eventApplies = true;
+      }
+      
+      // Sector-wide events
+      if (event.scope === 'sector' && sector && event.sector === sector) {
+        if (event.affectedCategories.includes('all') || 
+            event.affectedCategories.includes(resourceCategory)) {
+          eventApplies = true;
+        }
+      }
+      
+      // Galaxy-wide catastrophic events (affect EVERYTHING)
+      if (event.scope === 'galaxy') {
+        eventApplies = true;
+      }
+      
+      if (eventApplies) {
         newSupply *= event.supplyMultiplier || 1;
         newDemand *= event.demandMultiplier || 1;
       }
     });
     
-    newSupply = Math.max(this.config.minSupply, Math.min(this.config.maxSupply, newSupply));
-    newDemand = Math.max(this.config.minDemand, Math.min(this.config.maxDemand, newDemand));
+    // Remove supply/demand limits - let the chaos flow!
+    // Corporate markets can completely collapse or explode
+    newSupply = Math.max(1, newSupply); // Only prevent zero supply
+    newDemand = Math.max(1, newDemand); // Only prevent zero demand
     
     return {
       supply: Math.round(newSupply),
@@ -83,7 +108,9 @@ class MarketSimulation extends EventEmitter {
     
     const newTrend = (currentTrend * this.config.trendDecay) + (priceChangePercent * (1 - this.config.trendDecay));
     
-    return Math.max(-50, Math.min(50, newTrend));
+    // No trend caps - let runaway inflation and deflation spirals happen!
+    // This creates authentic corporate market disasters
+    return newTrend;
   }
 
   addMarketEvent(event) {
@@ -169,6 +196,18 @@ class MarketSimulation extends EventEmitter {
   }
 
   generateRandomEvent(resources, stations) {
+    // 15% chance for sector-wide events, 5% for galaxy-wide catastrophes
+    const eventScope = Math.random();
+    
+    if (eventScope < 0.05) {
+      // GALAXY-WIDE CATASTROPHIC EVENTS (5%)
+      return this.generateGalaxyWideEvent(resources, stations);
+    } else if (eventScope < 0.20) {
+      // SECTOR-WIDE EVENTS (15%)
+      return this.generateSectorWideEvent(resources, stations);
+    }
+    
+    // Regular station-specific events (80%)
     const eventTypes = [
       {
         name: 'Supply Shortage',
@@ -226,6 +265,109 @@ class MarketSimulation extends EventEmitter {
       supplyMultiplier: eventType.supplyMultiplier,
       demandMultiplier: eventType.demandMultiplier,
       duration: Math.floor(Math.random() * 20) + 5
+    };
+  }
+
+  generateSectorWideEvent(resources, stations) {
+    const sectorEvents = [
+      {
+        name: 'Corporate Bureaucratic Meltdown',
+        supplyMultiplier: 0.1,
+        demandMultiplier: 0.8,
+        categories: ['all'],
+        template: 'Sector-wide supply chain collapse due to Form 27-B filing deadline confusion',
+        duration: 25
+      },
+      {
+        name: 'Hyperspace Route Recalibration',
+        supplyMultiplier: 0.4,
+        demandMultiplier: 1.8,
+        categories: ['all'],
+        template: 'All sector shipping routes require mandatory "efficiency optimization" reviews',
+        duration: 30
+      },
+      {
+        name: 'Union Strike Action',
+        supplyMultiplier: 0.2,
+        demandMultiplier: 1.2,
+        categories: ['tech', 'consumable'],
+        template: 'Galactic Workers Union declares sector-wide work slowdown over coffee quality',
+        duration: 20
+      },
+      {
+        name: 'Tax Audit Season',
+        supplyMultiplier: 0.6,
+        demandMultiplier: 0.3,
+        categories: ['luxury'],
+        template: 'Corporate accounting departments freeze all "non-essential" luxury purchases',
+        duration: 35
+      }
+    ];
+
+    const eventType = sectorEvents[Math.floor(Math.random() * sectorEvents.length)];
+    const sector = ['Inner', 'Middle', 'Outer', 'Core', 'Rim'][Math.floor(Math.random() * 5)];
+
+    return {
+      name: eventType.name,
+      description: `${sector} Sector: ${eventType.template}`,
+      scope: 'sector',
+      sector: sector,
+      supplyMultiplier: eventType.supplyMultiplier,
+      demandMultiplier: eventType.demandMultiplier,
+      duration: eventType.duration,
+      affectedCategories: eventType.categories
+    };
+  }
+
+  generateGalaxyWideEvent(resources, stations) {
+    const galaxyEvents = [
+      {
+        name: 'The Great Corporate Restructuring',
+        supplyMultiplier: 0.05,
+        demandMultiplier: 0.1,
+        template: 'Galaxy-wide corporate merger creates "streamlined efficiency protocols" (nobody knows what they actually do)',
+        duration: 50
+      },
+      {
+        name: 'Universal Basic Caffeine Shortage',
+        supplyMultiplier: 0.01,
+        demandMultiplier: 15.0,
+        template: 'Coffee bean blight affects all inhabited systems - productivity plummets, desperation rises',
+        duration: 60
+      },
+      {
+        name: 'The Digital Currency Glitch',
+        supplyMultiplier: 50.0,
+        demandMultiplier: 0.1,
+        template: 'Accounting AI malfunctions, accidentally marks everything as "free promotional samples"',
+        duration: 15
+      },
+      {
+        name: 'Mandatory Efficiency Seminars',
+        supplyMultiplier: 0.3,
+        demandMultiplier: 0.3,
+        template: 'All stations required to attend week-long seminars on "Optimizing Workplace Synergy Through Bureaucratic Innovation"',
+        duration: 40
+      },
+      {
+        name: 'The Great Licensing Crisis',
+        supplyMultiplier: 0.02,
+        demandMultiplier: 2.0,
+        template: 'Galaxy-wide discovery that 98% of all business licenses were invalid due to "clerical oversight" in 2347',
+        duration: 45
+      }
+    ];
+
+    const eventType = galaxyEvents[Math.floor(Math.random() * galaxyEvents.length)];
+
+    return {
+      name: eventType.name,
+      description: `GALAXY-WIDE ALERT: ${eventType.template}`,
+      scope: 'galaxy',
+      supplyMultiplier: eventType.supplyMultiplier,
+      demandMultiplier: eventType.demandMultiplier,
+      duration: eventType.duration,
+      affectedCategories: ['all'] // Galaxy events affect everything
     };
   }
 }

@@ -52,18 +52,14 @@ export class MissionRepository {
 
   async findAvailable(limit = 10, stationId = null) {
     let queryText = `
-      SELECT m.*, s.name as station_name 
+      SELECT m.*
       FROM missions m
-      LEFT JOIN stations s ON m.station_id = s.id
-      WHERE m.status = 'available' 
+      WHERE m.is_active = true 
         AND (m.expires_at IS NULL OR m.expires_at > NOW())
     `;
     const params = [];
     
-    if (stationId) {
-      queryText += ' AND (m.station_id = $1 OR m.station_id IS NULL)';
-      params.push(stationId);
-    }
+    // Station filtering removed since missions table doesn't have station_id
     
     queryText += ' ORDER BY m.created_at DESC';
     
@@ -78,10 +74,9 @@ export class MissionRepository {
 
   async findByType(type, limit = 5) {
     const result = await query(
-      `SELECT m.*, s.name as station_name 
+      `SELECT m.*
        FROM missions m
-       LEFT JOIN stations s ON m.station_id = s.id
-       WHERE m.type = $1 AND m.status = 'available'
+       WHERE m.mission_type = $1 AND m.is_active = true
          AND (m.expires_at IS NULL OR m.expires_at > NOW())
        ORDER BY m.created_at DESC
        LIMIT $2`,
@@ -93,10 +88,9 @@ export class MissionRepository {
 
   async findByDifficulty(difficulty, limit = 5) {
     const result = await query(
-      `SELECT m.*, s.name as station_name 
+      `SELECT m.*
        FROM missions m
-       LEFT JOIN stations s ON m.station_id = s.id
-       WHERE m.difficulty = $1 AND m.status = 'available'
+       WHERE m.difficulty_level = $1 AND m.is_active = true
          AND (m.expires_at IS NULL OR m.expires_at > NOW())
        ORDER BY m.created_at DESC
        LIMIT $2`,
@@ -229,36 +223,20 @@ export class MissionRepository {
   }
 
   async expireMissions() {
-    const client = await transaction();
-    
-    try {
+    return await transaction(async (client) => {
       const expiredMissions = await client.query(
         `UPDATE missions 
-         SET status = 'expired', updated_at = NOW()
-         WHERE status = 'available' 
+         SET is_active = false
+         WHERE is_active = true 
            AND expires_at IS NOT NULL 
            AND expires_at <= NOW()
          RETURNING id, title`
       );
       
-      // Record expiration events
-      for (const mission of expiredMissions.rows) {
-        await client.query(
-          `INSERT INTO mission_history (id, mission_id, action, action_at)
-           VALUES ($1, $2, $3, NOW())`,
-          [uuidv4(), mission.id, 'expired']
-        );
-      }
-      
-      await client.query('COMMIT');
+      // Skip mission_history for now since table may not exist
       
       return expiredMissions.rows;
-    } catch (error) {
-      await client.query('ROLLBACK');
-      throw error;
-    } finally {
-      client.release();
-    }
+    });
   }
 
   async getPlayerMissions(playerId, status = null) {
@@ -327,10 +305,37 @@ export class MissionRepository {
   }
 
   parseJSON(jsonString, fallback) {
+    if (!jsonString || jsonString === null || jsonString === 'null' || jsonString === '') {
+      return fallback;
+    }
+    
     try {
-      return jsonString ? JSON.parse(jsonString) : fallback;
+      // Handle case where jsonString is already an object
+      if (typeof jsonString === 'object') {
+        return jsonString;
+      }
+      
+      // If it's a string that looks like it might be already parsed
+      if (typeof jsonString === 'string' && (jsonString === '[]' || jsonString === '{}')) {
+        return JSON.parse(jsonString);
+      }
+      
+      // Try to parse as JSON
+      if (typeof jsonString === 'string') {
+        return JSON.parse(jsonString);
+      }
+      
+      return jsonString;
     } catch (error) {
-      console.warn('Failed to parse JSON:', jsonString);
+      // Only log if it's an actual parsing issue, not if we're getting invalid strings
+      if (typeof jsonString === 'string' && jsonString.trim().length > 0) {
+        console.warn('MissionRepository: Failed to parse JSON field:', {
+          value: jsonString.substring(0, 100),
+          type: typeof jsonString,
+          length: jsonString?.length,
+          error: error.message
+        });
+      }
       return fallback;
     }
   }

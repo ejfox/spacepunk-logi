@@ -1,4 +1,44 @@
-Spacepunk Logistics Sim - Technical Design Brief
+# Spacepunk Logistics Simulation
+
+A server-authoritative space trucking game where you manage the corporate nightmare of interstellar logistics through deliberately terrible enterprise software.
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+
+- Docker and Docker Compose
+
+### Installation and Launch
+
+**Step 1: Start the Backend Services**
+```bash
+./start-backend.sh
+```
+This initializes PostgreSQL, Redis, and the game server with procedurally generated universe data.
+
+**Step 2: Launch the Frontend Interface**
+```bash
+./start-frontend.sh
+```
+This starts the brutalist management interface on port 3667.
+
+### Access Points
+- **Game Interface**: http://localhost:3667
+- **God Mode Dashboard**: http://localhost:3667/god-mode (development oversight panel)
+- **Backend API**: http://localhost:3666
+- **WebSocket Connection**: ws://localhost:3666
+
+### System Status Verification
+The god mode dashboard provides real-time monitoring of all universe systems, market chaos levels, and crew psychological states. Use it to verify proper initialization before beginning operations.
+
+### Common Issues
+- **Connection failures**: Ensure backend services are fully initialized before accessing frontend
+- **Permission errors**: Execute `chmod +x start-*.sh` to enable script execution
+- **Port conflicts**: Terminate existing processes on ports 3666 and 3667
+
+---
+
+# Spacepunk Logistics Sim - Technical Design Brief
 
 Executive Summary
 We're building a server-authoritative, tick-based space logistics simulation with emergent narrative generation. Players manage a single ship with deep crew relationships, engage in complex resource trading across faction-controlled markets, and experience procedurally generated missions that reflect their unique playstyle over dozens of hours.

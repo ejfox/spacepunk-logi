@@ -1,14 +1,13 @@
 import { EventEmitter } from 'events';
 import fetch from 'node-fetch';
+import { LLMConfig } from '../utils/llmConfig.js';
 
 class MissionGenerator extends EventEmitter {
   constructor(config = {}) {
     super();
     
+    this.llmConfig = new LLMConfig();
     this.config = {
-      apiKey: config.apiKey || process.env.OPENROUTER_API_KEY,
-      baseUrl: config.baseUrl || 'https://openrouter.ai/api/v1',
-      model: config.model || 'anthropic/claude-3-haiku',
       maxTokens: config.maxTokens || 1000,
       temperature: config.temperature || 0.8,
       maxRetries: config.maxRetries || 3,
@@ -16,8 +15,10 @@ class MissionGenerator extends EventEmitter {
       ...config
     };
     
-    if (!this.config.apiKey) {
-      console.warn('MissionGenerator: No API key provided. LLM features will be disabled.');
+    if (!this.llmConfig.isConfigured()) {
+      console.warn('MissionGenerator: No LLM configured. LLM features will be disabled.');
+    } else {
+      console.log(`MissionGenerator: Using ${this.llmConfig.useLocalLLM ? 'Local LLM' : 'OpenRouter'} at ${this.llmConfig.config.baseUrl}`);
     }
     
     this.missionTypes = [
@@ -116,21 +117,17 @@ Generate a ${context.difficulty} difficulty ${context.missionType.replace('_', '
   }
 
   async callLLM(prompt, retryCount = 0) {
-    if (!this.config.apiKey) {
-      throw new Error('No API key configured for LLM requests');
+    if (!this.llmConfig.isConfigured()) {
+      throw new Error('No LLM configured for requests');
     }
 
     try {
-      const response = await fetch(`${this.config.baseUrl}/chat/completions`, {
+      const llmConf = this.llmConfig.getConfig();
+      const response = await fetch(this.llmConfig.getEndpoint('/chat/completions'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config.apiKey}`,
-          'HTTP-Referer': 'https://spacepunk-logi.com',
-          'X-Title': 'Spacepunk Logistics'
-        },
+        headers: llmConf.headers,
         body: JSON.stringify({
-          model: this.config.model,
+          model: llmConf.model,
           messages: prompt.messages,
           max_tokens: this.config.maxTokens,
           temperature: this.config.temperature,
@@ -151,7 +148,10 @@ Generate a ${context.difficulty} difficulty ${context.missionType.replace('_', '
       return data.choices[0].message.content;
     } catch (error) {
       if (retryCount < this.config.maxRetries) {
-        console.log(`Retrying LLM request (${retryCount + 1}/${this.config.maxRetries})`);
+        // Only log on first failure, not every retry
+        if (retryCount === 0) {
+          console.log(`⚠️  LLM unavailable, using fallback systems (${error.message})`);
+        }
         await new Promise(resolve => setTimeout(resolve, this.config.retryDelay));
         return this.callLLM(prompt, retryCount + 1);
       }

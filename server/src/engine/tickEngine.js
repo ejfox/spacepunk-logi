@@ -2,6 +2,7 @@ import EventEmitter from 'events';
 import { query } from '../db/index.js';
 import MarketSimulation from '../market/MarketSimulation.js';
 import { MarketRepository } from '../repositories/MarketRepository.js';
+import { MarketDataGenerator } from '../generators/MarketDataGenerator.js';
 import MissionGenerator from '../missions/MissionGenerator.js';
 import { MissionRepository } from '../repositories/MissionRepository.js';
 import TrainingQueue from '../training/TrainingQueue.js';
@@ -18,6 +19,7 @@ export class TickEngine extends EventEmitter {
     // Initialize market systems
     this.marketSimulation = new MarketSimulation();
     this.marketRepository = new MarketRepository();
+    this.marketDataGenerator = new MarketDataGenerator();
     
     // Initialize mission systems
     this.missionGenerator = new MissionGenerator();
@@ -96,7 +98,10 @@ export class TickEngine extends EventEmitter {
     const tickStartTime = Date.now();
     this.currentTick++;
     
-    console.log(`Processing tick ${this.currentTick}`);
+    // Only log every 10 ticks to reduce spam
+    if (this.currentTick % 10 === 1) {
+      console.log(`⚡ Processing game tick ${this.currentTick}...`);
+    }
     this.emit('tick:start', this.currentTick);
 
     try {
@@ -125,20 +130,19 @@ export class TickEngine extends EventEmitter {
 
   async processResourceSystems() {
     // TODO: Implement resource consumption, production, degradation
-    console.log('Processing resource systems...');
+    // (Silent processing - only log if there are notable events)
   }
 
   async processCrewSystems() {
-    console.log('Processing crew systems...');
-    
     try {
       // Get all active training sessions
       const activeTraining = await this.trainingQueueRepository.findAllActive();
       
       if (activeTraining.length === 0) {
-        console.log('No active training sessions');
         return;
       }
+      
+      console.log(`🎓 Processing ${activeTraining.length} active training sessions`);
       
       // Load training sessions into the TrainingQueue service
       for (const session of activeTraining) {
@@ -155,11 +159,11 @@ export class TickEngine extends EventEmitter {
             startTime: new Date(session.start_time),
             endTime: new Date(session.end_time),
             duration: session.duration_hours,
-            progressMade: session.progress_made || 0,
+            progressMade: parseFloat(session.progress_made || 0),
             completed: false,
             burnout: session.burnout || false,
             totalTicks: 0,
-            efficiency: session.efficiency || 1.0,
+            efficiency: parseFloat(session.efficiency || 1.0),
             status: session.status,
             databaseId: session.id
           });
@@ -207,11 +211,27 @@ export class TickEngine extends EventEmitter {
       for (const update of progressUpdates) {
         const session = this.trainingQueue.activeTraining.get(update.crewMemberId);
         if (session && session.databaseId) {
+          // Ensure all values are proper numbers
+          const progressMade = parseFloat(session.progressMade);
+          const efficiency = parseFloat(session.efficiency);
+          const burnout = Boolean(session.burnout);
+          
+          // Validate numbers before database update
+          if (isNaN(progressMade) || isNaN(efficiency)) {
+            console.error(`Invalid training data for session ${session.databaseId}:`, {
+              originalProgressMade: session.progressMade,
+              originalEfficiency: session.efficiency,
+              parsedProgressMade: progressMade,
+              parsedEfficiency: efficiency
+            });
+            continue;
+          }
+          
           dbUpdates.push({
             id: session.databaseId,
-            progressMade: session.progressMade,
-            efficiency: session.efficiency,
-            burnout: session.burnout
+            progressMade: progressMade,
+            efficiency: efficiency,
+            burnout: burnout
           });
         }
       }
@@ -245,14 +265,12 @@ export class TickEngine extends EventEmitter {
   }
 
   async processMarketSystems() {
-    console.log('Processing market systems...');
-    
     try {
       // Get all current market data
       const currentMarkets = await this.marketRepository.findAllMarkets();
       
       if (currentMarkets.length === 0) {
-        console.log('No market data found, initializing markets...');
+        console.log('📈 Initializing market systems...');
         await this.initializeMarkets();
         return;
       }
@@ -260,13 +278,42 @@ export class TickEngine extends EventEmitter {
       // Simulate market changes
       const marketUpdates = this.marketSimulation.simulateMarketTick(currentMarkets);
       
+      // Generate commentary for significant price changes
+      const enhancedUpdates = [];
+      for (const update of marketUpdates) {
+        const market = currentMarkets.find(m => 
+          m.station_id === update.stationId && 
+          m.resource_id === update.resourceId
+        );
+        
+        if (market && Math.abs(update.priceTrend) > 5) {
+          // Generate LLM commentary for significant changes
+          const commentary = await this.marketDataGenerator.generateMarketCommentary({
+            resourceName: market.resource_name,
+            stationName: market.station_name,
+            currentPrice: update.currentPrice,
+            priceTrend: update.priceTrend,
+            supply: update.supply,
+            demand: update.demand
+          });
+          
+          enhancedUpdates.push({
+            ...update,
+            commentary
+          });
+        } else {
+          enhancedUpdates.push(update);
+        }
+      }
+      
       // Update database with new prices
       await this.marketRepository.updateMarketData(marketUpdates);
       
-      // Emit market update event
+      // Emit market update event with commentary
       this.emit('market:updated', {
         tick: this.currentTick,
-        updatedMarkets: marketUpdates.length
+        updatedMarkets: marketUpdates.length,
+        marketData: enhancedUpdates
       });
       
       // Randomly generate market events (10% chance per tick)
@@ -274,7 +321,10 @@ export class TickEngine extends EventEmitter {
         await this.generateMarketEvent();
       }
       
-      console.log(`Updated ${marketUpdates.length} market prices`);
+      // Only log if significant market activity
+      if (enhancedUpdates.length > 0) {
+        console.log(`📈 Market activity: ${enhancedUpdates.length} significant price changes`);
+      }
     } catch (error) {
       console.error('Error processing market systems:', error);
       throw error;
@@ -284,16 +334,23 @@ export class TickEngine extends EventEmitter {
   async initializeMarkets() {
     try {
       // Get all stations and resources
-      const stationsResult = await query('SELECT id FROM stations');
+      const stationsResult = await query('SELECT id, name FROM stations');
       const resourcesResult = await query('SELECT id FROM resources');
       
-      const stationIds = stationsResult.rows.map(s => s.id);
+      // Use lowercase station names as IDs for market_data
+      const stationData = stationsResult.rows.map(s => ({
+        id: s.name.toLowerCase().replace(/\s+/g, '-'),
+        name: s.name
+      }));
       const resourceIds = resourcesResult.rows.map(r => r.id);
       
       // Initialize all market combinations
-      await this.marketRepository.initializeAllMarkets(stationIds, resourceIds);
+      await this.marketRepository.initializeAllMarkets(
+        stationData.map(s => s.id), 
+        resourceIds
+      );
       
-      console.log(`Initialized markets for ${stationIds.length} stations and ${resourceIds.length} resources`);
+      console.log(`Initialized markets for ${stationData.length} stations and ${resourceIds.length} resources`);
     } catch (error) {
       console.error('Error initializing markets:', error);
       throw error;
@@ -311,8 +368,16 @@ export class TickEngine extends EventEmitter {
       );
       
       if (event) {
+        // Generate enhanced event description using LLM
+        const enhancedDescription = await this.marketDataGenerator.generateEventDescription({
+          ...event,
+          resourceName: resourcesResult.rows.find(r => r.id === event.resourceId)?.name,
+          stationName: stationsResult.rows.find(s => s.id === event.stationId)?.name
+        });
+        
+        event.description = enhancedDescription;
         this.marketSimulation.addMarketEvent(event);
-        console.log(`Market event generated: ${event.name} - ${event.description}`);
+        console.log(`📊 Market event: ${event.name} - ${event.description}`);
       }
     } catch (error) {
       console.error('Error generating market event:', error);
@@ -391,7 +456,11 @@ export class TickEngine extends EventEmitter {
           console.log(`Generated mission: ${savedMission.title} at ${station?.name || 'Unknown Station'}`);
           
         } catch (error) {
-          console.error(`Failed to generate mission ${i + 1}:`, error);
+          // Only log mission generation failures once per tick, not per mission
+          if (i === 0 && !this.llmFailureLogged) {
+            console.log(`📋 Mission generation: Using fallback templates (LLM unavailable)`);
+            this.llmFailureLogged = true;
+          }
         }
       }
       

@@ -11,6 +11,30 @@ export function setupWebSocketHandlers(wss, tickEngine) {
     });
   });
 
+  // Listen for market update events
+  tickEngine.on('market:updated', (marketData) => {
+    broadcast(wss, {
+      type: 'market:update',
+      data: marketData
+    });
+  });
+
+  // Listen for market events
+  tickEngine.on('market:event', (eventData) => {
+    broadcast(wss, {
+      type: 'market:event',
+      data: eventData
+    });
+  });
+
+  // Listen for significant price changes
+  tickEngine.on('market:priceChange', (priceData) => {
+    broadcast(wss, {
+      type: 'market:priceChange',
+      data: priceData
+    });
+  });
+
   wss.on('connection', (ws) => {
     const clientId = uuidv4();
     const client = {
@@ -39,7 +63,12 @@ export function setupWebSocketHandlers(wss, tickEngine) {
         const data = JSON.parse(message);
         await handleMessage(client, data);
       } catch (error) {
-        console.error('Error handling WebSocket message:', error);
+        console.error('WebSocket: Failed to parse message from client:', {
+          clientId,
+          messageLength: message?.length,
+          messagePreview: message?.toString().substring(0, 100),
+          error: error.message
+        });
         ws.send(JSON.stringify({
           type: 'error',
           data: { message: 'Invalid message format' }

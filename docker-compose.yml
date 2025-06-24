@@ -26,12 +26,16 @@ services:
     container_name: spacepunk-server
     environment:
       NODE_ENV: ${NODE_ENV:-development}
-      PORT: ${PORT:-3001}
+      PORT: ${PORT:-3666}
       DATABASE_URL: postgres://${POSTGRES_USER:-spacepunk}:${POSTGRES_PASSWORD:-spacepunk_dev}@postgres:5432/${POSTGRES_DB:-spacepunk_logi}
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-development_secret_change_in_production}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-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}
+      USE_LOCAL_LLM: false
+      LOCAL_LLM_URL: ${LOCAL_LLM_URL:-http://host.docker.internal:1234/v1}
+      LOCAL_LLM_MODEL: ${LOCAL_LLM_MODEL:-TheBloke/deepseek-coder-6.7B-instruct-GGUF}
     ports:
-      - "3001:3001"
+      - "3666:3666"
     depends_on:
       postgres:
         condition: service_healthy
@@ -46,7 +50,7 @@ services:
     image: redis:7-alpine
     container_name: spacepunk-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
 

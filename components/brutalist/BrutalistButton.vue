@@ -3,7 +3,8 @@
     'button-disabled': disabled,
     'button-processing': processing,
     'button-danger': variant === 'danger',
-    'button-primary': variant === 'primary'
+    'button-primary': variant === 'primary',
+    'button-warning': variant === 'warning'
   }" :disabled="disabled || processing" @click="handleClick">
     <span v-if="processing" class="processing-indicator">[PROCESSING]</span>
     <span v-else>
@@ -15,14 +16,14 @@
 </template>
 
 <script setup>
-defineProps({
+const props = defineProps({
   label: String,
   disabled: Boolean,
   processing: Boolean,
   variant: {
     type: String,
     default: 'default',
-    validator: (value) => ['default', 'primary', 'danger'].includes(value)
+    validator: (value) => ['default', 'primary', 'danger', 'warning'].includes(value)
   }
 })
 
@@ -83,6 +84,16 @@ const handleClick = (event) => {
 .button-primary {
   border-width: 2px;
   font-weight: bold;
+}
+
+.button-warning {
+  border-color: #ffff00;
+  color: #ffff00;
+}
+
+.button-warning:hover:not(.button-disabled):not(.button-processing) {
+  background: #ffff00;
+  color: #000000;
 }
 
 .processing-indicator {
