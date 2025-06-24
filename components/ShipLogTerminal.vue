@@ -198,7 +198,7 @@ export default {
       
       this.isLoading = true;
       try {
-        const response = await fetch(`/api/player/${this.playerId}/logs?limit=20`);
+        const response = await fetch(`http://localhost:3666/api/player/${this.playerId}/logs?limit=20`);
         if (!response.ok) throw new Error('Failed to fetch logs');
         
         this.logs = await response.json();
@@ -225,7 +225,7 @@ export default {
       
       this.isGenerating = true;
       try {
-        const response = await fetch(`/api/player/${this.playerId}/generate-log`, {
+        const response = await fetch(`http://localhost:3666/api/player/${this.playerId}/generate-log`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
         });

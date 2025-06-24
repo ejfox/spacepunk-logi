@@ -492,6 +492,29 @@ async function loadInitialData() {
   }
 }
 
+async function generateShipLog() {
+  try {
+    if (!player.value?.id) return
+    
+    const response = await fetch(`http://localhost:3666/api/player/${player.value.id}/generate-log`, {
+      method: 'POST'
+    })
+    
+    if (response.ok) {
+      const data = await response.json()
+      if (data.logEntry) {
+        // Display the beautiful LLM-generated narrative summary
+        addMessage(`📔 SHIP'S LOG SUMMARY:`)
+        addMessage(data.logEntry.narrative || data.logEntry.content)
+        addMessage(`📊 Entry logged at stardate ${new Date().toISOString().slice(0,16).replace('T',' ')}`)
+      }
+    }
+  } catch (error) {
+    console.error('Failed to generate ship log:', error)
+    // Don't show error to user - this is optional narrative content
+  }
+}
+
 async function loadGameData() {
   if (!player.value || !ship.value) return
 
@@ -500,7 +523,8 @@ async function loadGameData() {
     loadCrew(),
     loadAvailableCrew(),
     loadTrainingData(),
-    loadMissions()
+    loadMissions(),
+    generateShipLog() // Generate LLM narrative summary
   ])
 }
 
