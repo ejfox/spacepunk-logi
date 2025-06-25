@@ -1,11 +1,40 @@
 import Chance from 'chance'
 import MissionGenerator from '../missions/MissionGenerator.js'
+import { LLMQueue } from '../utils/LLMQueue.js'
 
 export class MicroNarrativeGenerator {
   constructor(seed = 'spacepunk-micro-narrative') {
     this.chance = new Chance(seed)
     this.missionGenerator = new MissionGenerator()
     this.templates = this.initializeTemplates()
+    
+    // Initialize LLM queue with conservative rate limits
+    this.llmQueue = new LLMQueue({
+      requestsPerMinute: 25, // Conservative OpenRouter limit
+      maxRetries: 3,
+      retryDelay: 1000
+    })
+    
+    // Set up queue event logging
+    this.setupQueueLogging()
+  }
+
+  setupQueueLogging() {
+    this.llmQueue.on('queued', ({ id, queueLength, priority }) => {
+      console.log(`📝 LLM request queued: ${id} (${priority}) - Queue: ${queueLength}`)
+    })
+    
+    this.llmQueue.on('processing', ({ id, attempt, queuedFor }) => {
+      console.log(`🤖 Processing LLM request: ${id} (attempt ${attempt}, queued ${queuedFor}ms)`)
+    })
+    
+    this.llmQueue.on('completed', ({ id, responseTime, attempts }) => {
+      console.log(`✅ LLM request completed: ${id} in ${responseTime}ms (${attempts} attempts)`)
+    })
+    
+    this.llmQueue.on('error', ({ id, error, attempt }) => {
+      console.log(`❌ LLM request failed: ${id} - ${error} (attempt ${attempt})`)
+    })
   }
 
   initializeTemplates() {
@@ -331,16 +360,60 @@ EXAMPLE RESPONSES:
     performance: [[85, 'EXCEEDS EXPECTATIONS'], [70, 'MEETS EXPECTATIONS'], [55, 'SATISFACTORY'], [40, 'NEEDS IMPROVEMENT'], [0, 'BELOW STANDARDS']]
   }
 
-  // Atomic narrative generator
-  async generateCrewNarrative(crewMember, type, context = {}) {
+  // Atomic narrative generator with queue support
+  async generateCrewNarrative(crewMember, type, context = {}, priority = 'normal') {
     const ctx = this.buildCrewContext(crewMember, context)
     const prompt = this.buildPrompt(type, ctx)
     
+    // Wrap LLM call in queue function
+    const llmFunction = () => this.callMicroLLM(prompt)
+    
     try {
-      return await this.callMicroLLM(prompt) || this.generateFallbackNarrative(`crew_${type}`, ctx)
+      return await this.llmQueue.enqueue(llmFunction, priority) || this.generateFallbackNarrative(`crew_${type}`, ctx)
     } catch (error) {
+      console.log(`🔄 LLM failed for ${crewMember.name} ${type}, using fallback`)
       return this.generateFallbackNarrative(`crew_${type}`, ctx)
     }
+  }
+
+  // Batch crew narrative generation for efficiency
+  async batchGenerateCrewNarratives(crewMember, types = ['description', 'health', 'morale', 'stress', 'skill', 'trait'], priority = 'normal') {
+    const ctx = this.buildCrewContext(crewMember)
+    
+    const llmFunctions = types.map(type => ({
+      type,
+      function: () => this.callMicroLLM(this.buildPrompt(type, ctx))
+    }))
+    
+    try {
+      const results = await this.llmQueue.batchEnqueue(
+        llmFunctions.map(({ function: llmFunc }) => llmFunc),
+        priority
+      )
+      
+      // Map results back to types
+      const narratives = {}
+      types.forEach((type, index) => {
+        narratives[type] = results[index] || this.generateFallbackNarrative(`crew_${type}`, ctx)
+      })
+      
+      return narratives
+    } catch (error) {
+      console.log(`🔄 Batch LLM failed for ${crewMember.name}, using fallbacks`)
+      
+      // Generate fallbacks for all types
+      const narratives = {}
+      types.forEach(type => {
+        narratives[type] = this.generateFallbackNarrative(`crew_${type}`, ctx)
+      })
+      
+      return narratives
+    }
+  }
+
+  // Get queue statistics for monitoring
+  getQueueStats() {
+    return this.llmQueue.getStats()
   }
 
   // Context builder - atomically extracts all crew data

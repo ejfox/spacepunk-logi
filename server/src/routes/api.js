@@ -90,35 +90,37 @@ router.post('/player/create', async (req, res) => {
 });
 
 
-// Generate comprehensive crew narratives
+// Generate comprehensive crew narratives (rate-limited & queued)
 router.post('/api/crew/generate-narratives', async (req, res) => {
   try {
-    const { crewMember } = req.body;
+    const { crewMember, priority = 'normal' } = req.body;
     
-    const narratives = await Promise.all([
-      microNarrative.generateCrewNarrative(crewMember, 'description'),
-      microNarrative.generateCrewNarrative(crewMember, 'health'),
-      microNarrative.generateCrewNarrative(crewMember, 'morale'),
-      microNarrative.generateCrewNarrative(crewMember, 'stress'),
-      microNarrative.generateCrewNarrative(crewMember, 'skill'),
-      microNarrative.generateCrewNarrative(crewMember, 'trait'),
-      microNarrative.generateCrewNarrative(crewMember, 'background'),
-      microNarrative.generateCrewNarrative(crewMember, 'performance')
-    ]);
+    // Use efficient batch generation instead of individual calls
+    const narratives = await microNarrative.batchGenerateCrewNarratives(
+      crewMember, 
+      ['description', 'health', 'morale', 'stress', 'skill', 'trait', 'background', 'performance'],
+      priority
+    );
 
-    res.json({
-      description: narratives[0],
-      health: narratives[1],
-      morale: narratives[2],
-      stress: narratives[3],
-      skill: narratives[4],
-      trait: narratives[5],
-      background: narratives[6],
-      performance: narratives[7]
-    });
+    res.json(narratives);
   } catch (error) {
     console.error('Error generating crew narratives:', error);
     res.status(500).json({ error: 'Failed to generate narratives' });
+  }
+});
+
+// LLM queue status endpoint for monitoring
+router.get('/api/llm/status', async (req, res) => {
+  try {
+    const stats = microNarrative.getQueueStats();
+    res.json({
+      status: 'operational',
+      queue: stats,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error getting LLM status:', error);
+    res.status(500).json({ error: 'Failed to get LLM status' });
   }
 });
 
