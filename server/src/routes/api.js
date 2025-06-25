@@ -8,6 +8,7 @@ import { MissionRepository } from '../repositories/MissionRepository.js';
 import { ShipLogRepository } from '../repositories/ShipLogRepository.js';
 import { TrainingQueueRepository } from '../repositories/TrainingQueueRepository.js';
 import AbsenceStories from '../narrative/AbsenceStories.js';
+import { MicroNarrativeGenerator } from '../narrative/MicroNarrativeGenerator.js';
 import TrainingQueue from '../training/TrainingQueue.js';
 import { query } from '../db/index.js';
 import { ContentGenerator } from '../generators/ContentGenerator.js';
@@ -26,6 +27,7 @@ const missionRepo = new MissionRepository();
 const shipLogRepo = new ShipLogRepository();
 const trainingQueueRepo = new TrainingQueueRepository();
 const absenceStories = new AbsenceStories();
+const microNarrative = new MicroNarrativeGenerator();
 const trainingQueue = new TrainingQueue();
 const contentGenerator = new ContentGenerator();
 const dialogGenerator = new DialogGenerator();
@@ -93,13 +95,21 @@ router.get('/crew/available', async (req, res) => {
   try {
     const availableCrew = await crewRepo.findAvailableForHire(10);
     
-    // Always generate fresh crew using LLM + chance.js
-    if (availableCrew.length === 0) {
-      const generatedCrew = await crewRepo.generateAvailableCrew(5);
-      res.json(generatedCrew);
-    } else {
-      res.json(availableCrew);
-    }
+    let crewList = availableCrew.length === 0 ? 
+      await crewRepo.generateAvailableCrew(5) : 
+      availableCrew;
+
+    // Add micro-narratives to each crew member
+    const enrichedCrew = await Promise.all(crewList.map(async (member) => {
+      const narrative = await microNarrative.generateCrewHiringNarrative(member);
+      return {
+        ...member,
+        corporate_summary: narrative,
+        hiring_memo: `Personnel File ${member.id.substr(0, 8).toUpperCase()}: ${narrative}`
+      };
+    }));
+    
+    res.json(enrichedCrew);
   } catch (error) {
     console.error('Error with crew system:', error);
     res.status(500).json({ error: 'Crew generation system failed' });
@@ -115,8 +125,18 @@ router.get('/crew/:crewId', async (req, res) => {
     if (!crewMember) {
       return res.status(404).json({ error: 'Crew member not found' });
     }
+
+    // Add detailed corporate narratives
+    const narrative = await microNarrative.generateCrewHiringNarrative(crewMember);
+    const enrichedMember = {
+      ...crewMember,
+      corporate_summary: narrative,
+      personnel_evaluation: `Employee ${crewMember.name}: ${narrative}`,
+      status_report: await microNarrative.generateActionNarrative('system_check', {}),
+      performance_notes: `Current assignment status: Active. Compliance rating: Satisfactory.`
+    };
     
-    res.json(crewMember);
+    res.json(enrichedMember);
   } catch (error) {
     console.error('Error fetching crew member:', error);
     res.status(500).json({ error: 'Failed to fetch crew member details' });
@@ -203,20 +223,47 @@ router.get('/market/data', async (req, res) => {
       console.log('No market data found, returning resources with base prices');
       // No market data yet, return resources with base prices
       const resources = await query('SELECT * FROM resources ORDER BY category, name');
-      const resourcesWithPricing = resources.rows.map(resource => ({
-        ...resource,
-        resource_name: resource.name,
-        resource_category: resource.category,
-        current_price: resource.base_price,
-        supply: Math.floor(Math.random() * 400) + 100,
-        demand: Math.floor(Math.random() * 400) + 100,
-        price_trend: (Math.random() - 0.5) * 20
+      const resourcesWithPricing = await Promise.all(resources.rows.map(async (resource) => {
+        const priceTrend = (Math.random() - 0.5) * 20;
+        const marketNarrative = await microNarrative.generateMarketNarrative({
+          resourceName: resource.name,
+          priceChange: priceTrend,
+          stationName: stationId
+        });
+        
+        return {
+          ...resource,
+          resource_name: resource.name,
+          resource_category: resource.category,
+          current_price: resource.base_price,
+          supply: Math.floor(Math.random() * 400) + 100,
+          demand: Math.floor(Math.random() * 400) + 100,
+          price_trend: priceTrend,
+          market_analysis: marketNarrative,
+          corporate_memo: `Trade Advisory: ${marketNarrative}`
+        };
       }));
       console.log(`Returning ${resourcesWithPricing.length} resources with simulated data`);
       res.json(resourcesWithPricing);
     } else {
-      console.log(`Found ${marketData.length} market entries`);
-      res.json(marketData);
+      // Add narratives to existing market data
+      const enrichedMarketData = await Promise.all(marketData.map(async (item) => {
+        const marketNarrative = await microNarrative.generateMarketNarrative({
+          resourceName: item.resource_name,
+          priceChange: item.price_trend || 0,
+          stationName: stationId
+        });
+        
+        return {
+          ...item,
+          market_analysis: marketNarrative,
+          corporate_memo: `Trade Advisory: ${marketNarrative}`,
+          sector_report: `${item.resource_category}: Market conditions ${item.price_trend > 0 ? 'favorable' : 'challenging'}`
+        };
+      }));
+      
+      console.log(`Found ${enrichedMarketData.length} market entries`);
+      res.json(enrichedMarketData);
     }
   } catch (error) {
     console.error('Error fetching market data:', error);
@@ -345,10 +392,16 @@ router.get('/missions/stats', async (req, res) => {
   }
 });
 
-// Generate ship's log for player login
+// Test route
+router.get('/debug/routes', (req, res) => {
+  res.json({ message: 'Routes are working', timestamp: new Date() });
+});
+
+// Generate ship's log for player login  
 router.post('/player/:playerId/generate-log', async (req, res) => {
   try {
     const { playerId } = req.params;
+    console.log('🚀 Generate log endpoint called for player:', playerId);
     
     const logEntry = await shipLogRepo.generateAbsenceStoryForPlayer(playerId, absenceStories);
     
@@ -523,13 +576,27 @@ router.get('/crew/:crewId/training/status', async (req, res) => {
     if (!activeTraining) {
       return res.json({ 
         hasActiveTraining: false,
-        training: null 
+        training: null,
+        corporate_status: "No active training sessions assigned to employee."
       });
     }
+
+    // Add training narrative
+    const trainingNarrative = await microNarrative.generateTrainingNarrative({
+      crewMember: { name: `Employee-${crewId.substr(0, 8)}` },
+      skill: activeTraining.skill_type,
+      improvement: activeTraining.progress_made,
+      trainingType: activeTraining.training_type
+    });
     
     res.json({
       hasActiveTraining: true,
-      training: activeTraining
+      training: {
+        ...activeTraining,
+        progress_narrative: trainingNarrative,
+        corporate_update: `Training Department: ${trainingNarrative}`,
+        status_memo: `Skill development program in progress. Current efficiency: ${Math.round(activeTraining.progress_made * 100)}%`
+      }
     });
     
   } catch (error) {
@@ -661,7 +728,23 @@ router.get('/ship/:shipId/status', async (req, res) => {
     if (!ship) {
       return res.status(404).json({ error: 'Ship not found' });
     }
-    res.json(ship);
+
+    // Add narrative enhancements
+    const fuelStatus = await microNarrative.generateActionNarrative('fuel_used', { 
+      fuel_change: ship.fuel_max - ship.fuel_current 
+    });
+    
+    const systemStatus = await microNarrative.generateActionNarrative('system_check', {});
+    
+    const enrichedShip = {
+      ...ship,
+      system_status: systemStatus,
+      fuel_narrative: fuelStatus,
+      operational_summary: `Vessel ${ship.name}: All systems operating within corporate parameters.`,
+      corporate_overview: `Ship status report: ${ship.name} maintains operational readiness per corporate standards.`
+    };
+
+    res.json(enrichedShip);
   } catch (error) {
     console.error('Error fetching ship status:', error);
     res.status(500).json({ error: 'Failed to fetch ship status' });
@@ -1711,6 +1794,7 @@ router.get('/god-mode/training', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch training data' });
   }
 });
+
 
 // Get system resources and performance
 router.get('/god-mode/system-status', async (req, res) => {

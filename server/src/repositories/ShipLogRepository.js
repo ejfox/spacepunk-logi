@@ -105,19 +105,19 @@ export class ShipLogRepository {
 
   async getPlayerLastLogin(playerId) {
     const result = await query(
-      `SELECT last_login_at 
+      `SELECT last_login 
        FROM players 
        WHERE id = $1`,
       [playerId]
     );
     
-    return result.rows[0]?.last_login_at || null;
+    return result.rows[0]?.last_login || null;
   }
 
   async updatePlayerLastLogin(playerId) {
     await query(
       `UPDATE players 
-       SET last_login_at = NOW(), updated_at = NOW()
+       SET last_login = NOW(), updated_at = NOW()
        WHERE id = $1`,
       [playerId]
     );
@@ -287,23 +287,27 @@ export class ShipLogRepository {
 
   async generateAbsenceStoryForPlayer(playerId, absenceStories) {
     try {
+      console.log('Generating absence story for player:', playerId);
+      
       // Get player's current ship
       const playerShip = await query(
-        `SELECT s.*, p.last_login_at 
+        `SELECT s.*, p.last_login 
          FROM ships s
          JOIN players p ON s.player_id = p.id
-         WHERE p.id = $1 AND s.status = 'active'
+         WHERE p.id = $1 AND s.status = 'operational'
          ORDER BY s.created_at DESC
          LIMIT 1`,
         [playerId]
       );
 
+      console.log('Ship query result:', playerShip.rows.length, 'rows');
+      
       if (playerShip.rows.length === 0) {
         throw new Error('No active ship found for player');
       }
 
       const ship = playerShip.rows[0];
-      const lastLogin = ship.last_login_at;
+      const lastLogin = ship.last_login;
       const currentLogin = new Date();
       
       if (!lastLogin) {
