@@ -53,6 +53,15 @@
       @choice-made="handleDialogChoice"
       @dialog-cancelled="cancelDialog"
     />
+
+    <!-- Crew Management System -->
+    <CrewManagement
+      :visible="showCrewManagement"
+      :player-id="playerId"
+      @close="handleCloseCrewManagement"
+      @crew-hired="handleCrewHired"
+      @crew-assigned="handleCrewAssigned"
+    />
   </div>
 </template>
 
@@ -62,6 +71,7 @@ import StatusDisplay from './brutalist/StatusDisplay.vue'
 import ActionGrid from './brutalist/ActionGrid.vue'
 import EventLog from './brutalist/EventLog.vue'
 import DialogChoice from './brutalist/DialogChoice.vue'
+import CrewManagement from './brutalist/CrewManagement.vue'
 
 // Props
 const props = defineProps({
@@ -91,6 +101,9 @@ const playerReputation = ref({
 const showDialog = ref(false)
 const currentDialog = ref(null)
 const pendingAction = ref(null)
+
+// Crew management system
+const showCrewManagement = ref(false)
 
 // Computed properties
 const shipStatusItems = computed(() => [
@@ -172,6 +185,13 @@ const availableActions = computed(() => [
     label: 'WAIT',
     disabled: isProcessing.value,
     variant: 'default'
+  },
+  {
+    id: 'crew',
+    key: 'C',
+    label: 'CREW',
+    disabled: isProcessing.value,
+    variant: 'primary'
   }
 ])
 
@@ -241,6 +261,9 @@ async function handleAction(actionId) {
           break
         case 'wait':
           await handleWait()
+          break
+        case 'crew':
+          await handleCrew()
           break
       }
     } finally {
@@ -517,9 +540,33 @@ async function handleWait() {
   }
 }
 
+async function handleCrew() {
+  // Open crew management interface
+  addEvent('> Accessing crew management terminal...', 'info')
+  showCrewManagement.value = true
+}
+
 function clearLog() {
   events.value = []
   addEvent('> Log cleared', 'info')
+}
+
+// Crew Management Event Handlers
+function handleCloseCrewManagement() {
+  showCrewManagement.value = false
+  addEvent('> Crew management terminal closed', 'info')
+}
+
+function handleCrewHired(data) {
+  const { candidate, cost } = data
+  credits.value = Math.max(0, credits.value - cost)
+  addEvent(`> Hired ${candidate.name} (${candidate.role}) for ${cost} CR`, 'success')
+  addEvent(`> Welcome aboard, ${candidate.name}!`, 'info')
+}
+
+function handleCrewAssigned(crew) {
+  addEvent(`> ${crew.name} assignment updated`, 'info')
+  // In the future, this could open an assignment dialog or update crew tasks
 }
 
 // CASCADING EFFECTS SYSTEM
@@ -600,7 +647,8 @@ function handleKeyPress(event) {
     'v': 'travel',
     'e': 'explore',
     's': 'spy',
-    'w': 'wait'
+    'w': 'wait',
+    'c': 'crew'
   }
   
   if (actionMap[key]) {
