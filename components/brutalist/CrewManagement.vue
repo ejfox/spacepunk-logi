@@ -104,68 +104,27 @@ const selectedCrewId = ref(null)
 const isLoading = ref(false)
 const maxCrew = ref(6)
 
-// Sample crew data for testing
-const sampleCurrentCrew = [
-  {
-    id: 'crew-001',
-    name: 'Chen Rodriguez',
-    role: 'Engineer',
-    level: 3,
-    experience: 2450,
-    morale: 75,
-    stress: 35,
-    health: 90,
-    traits: ['Handy', 'Coffee Addict', 'Detail Oriented'],
-    currentTask: 'Engine Maintenance',
-    available: true
-  },
-  {
-    id: 'crew-002', 
-    name: 'Alex Morrison',
-    role: 'Pilot',
-    level: 5,
-    experience: 4200,
-    morale: 85,
-    stress: 20,
-    health: 95,
-    traits: ['Steady Hands', 'Navigator', 'Risk Taker'],
-    currentTask: 'Navigation Planning',
-    available: true
+// Pure LLM-driven crew data - just fetch from backend
+async function loadCrewData() {
+  isLoading.value = true
+  try {
+    // Fetch current crew from backend with LLM narratives
+    const currentResponse = await fetch(`http://localhost:3666/api/crew/current/${props.playerId}`)
+    if (currentResponse.ok) {
+      currentCrew.value = await currentResponse.json()
+    }
+    
+    // Fetch available crew with LLM narratives  
+    const availableResponse = await fetch('http://localhost:3666/api/crew/available')
+    if (availableResponse.ok) {
+      availableCrew.value = await availableResponse.json()
+    }
+  } catch (error) {
+    console.error('Failed to load crew data:', error)
+  } finally {
+    isLoading.value = false
   }
-]
-
-const sampleAvailableCrew = [
-  {
-    id: 'hire-001',
-    name: 'Jordan Kim',
-    role: 'Security',
-    level: 2,
-    experience: 1200,
-    morale: 70,
-    stress: 40,
-    health: 85,
-    traits: ['Alert', 'Combat Training'],
-    cost: 1500,
-    available: true
-  },
-  {
-    id: 'hire-002',
-    name: 'Sam Torres',
-    role: 'Medic',
-    level: 4,
-    experience: 3100,
-    morale: 80,
-    stress: 25,
-    health: 100,
-    traits: ['First Aid', 'Calm Under Pressure', 'Organized'],
-    cost: 2500,
-    available: true
-  }
-]
-
-// Initialize with sample data
-currentCrew.value = sampleCurrentCrew
-availableCrew.value = sampleAvailableCrew
+}
 
 // Computed properties
 const getSelectedCrewName = () => {

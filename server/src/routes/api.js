@@ -90,6 +90,38 @@ router.post('/player/create', async (req, res) => {
 });
 
 
+// Generate comprehensive crew narratives
+router.post('/api/crew/generate-narratives', async (req, res) => {
+  try {
+    const { crewMember } = req.body;
+    
+    const narratives = await Promise.all([
+      microNarrative.generateCrewNarrative(crewMember, 'description'),
+      microNarrative.generateCrewNarrative(crewMember, 'health'),
+      microNarrative.generateCrewNarrative(crewMember, 'morale'),
+      microNarrative.generateCrewNarrative(crewMember, 'stress'),
+      microNarrative.generateCrewNarrative(crewMember, 'skill'),
+      microNarrative.generateCrewNarrative(crewMember, 'trait'),
+      microNarrative.generateCrewNarrative(crewMember, 'background'),
+      microNarrative.generateCrewNarrative(crewMember, 'performance')
+    ]);
+
+    res.json({
+      description: narratives[0],
+      health: narratives[1],
+      morale: narratives[2],
+      stress: narratives[3],
+      skill: narratives[4],
+      trait: narratives[5],
+      background: narratives[6],
+      performance: narratives[7]
+    });
+  } catch (error) {
+    console.error('Error generating crew narratives:', error);
+    res.status(500).json({ error: 'Failed to generate narratives' });
+  }
+});
+
 // Get available crew for hiring
 router.get('/crew/available', async (req, res) => {
   try {
