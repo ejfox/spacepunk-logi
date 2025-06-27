@@ -87,6 +87,21 @@ export class CrewRepository {
     return result.rows;
   }
 
+  async findActiveCrew() {
+    const result = await query(
+      `SELECT id, ship_id, name, age, homeworld, culture,
+              skill_engineering, skill_piloting, skill_social, skill_combat,
+              trait_bravery, trait_loyalty, trait_ambition, trait_work_ethic,
+              health, morale, fatigue, parent_ids,
+              hired_at, created_at, updated_at
+       FROM crew_members 
+       WHERE ship_id IS NOT NULL AND died_at IS NULL
+       ORDER BY hired_at ASC`
+    );
+    
+    return result.rows;
+  }
+
   async findAvailableForHire(limit = 20) {
     const result = await query(
       `SELECT id, name, age, homeworld, culture,

@@ -101,16 +101,18 @@ export class DialogGenerator {
       const prompt = this.buildDNAPrompt(actionType, playerState, storyDNA, playerReputation)
       
       // Call LLM with creative freedom
-      const response = await this.missionGenerator.callLLM([
-        {
-          role: "system",
-          content: this.getDNASystemPrompt()
-        },
-        {
-          role: "user", 
-          content: prompt
-        }
-      ])
+      const response = await this.missionGenerator.callLLM({
+        messages: [
+          {
+            role: "system",
+            content: this.getDNASystemPrompt()
+          },
+          {
+            role: "user", 
+            content: prompt
+          }
+        ]
+      })
 
       // Parse and validate response
       const dialog = this.parseDialogResponse(response)

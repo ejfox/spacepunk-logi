@@ -196,6 +196,82 @@ export class MarketRepository {
       return results;
     });
   }
+
+  async executeTrade(stationId, resourceId, side, volume, playerId) {
+    return await transaction(async (client) => {
+      // 1. Get current market data, or create it if it doesn't exist
+      let marketResult = await client.query(
+        'SELECT * FROM market_data WHERE station_id = $1 AND resource_id = $2 FOR UPDATE',
+        [stationId, resourceId]
+      );
+
+      if (marketResult.rows.length === 0) {
+        await this.initializeMarketData(stationId, resourceId);
+        marketResult = await client.query(
+          'SELECT * FROM market_data WHERE station_id = $1 AND resource_id = $2 FOR UPDATE',
+          [stationId, resourceId]
+        );
+      }
+
+      const market = marketResult.rows[0];
+      const price = market.current_price;
+      const totalCost = price * volume;
+
+      // 2. Get player data
+      const playerResult = await client.query(
+        'SELECT * FROM players WHERE id = $1 FOR UPDATE',
+        [playerId]
+      );
+
+      if (playerResult.rows.length === 0) {
+        throw new Error(`Player ${playerId} not found`);
+      }
+
+      const player = playerResult.rows[0];
+
+      // 3. Perform transaction logic
+      if (side === 'buy') {
+        if (player.credits < totalCost) {
+          throw new Error('Insufficient credits');
+        }
+        if (market.supply < volume) {
+          throw new Error('Insufficient supply');
+        }
+
+        // Update player and market
+        await client.query(
+          'UPDATE players SET credits = credits - $1 WHERE id = $2',
+          [totalCost, playerId]
+        );
+        await client.query(
+          'UPDATE market_data SET supply = supply - $1, demand = demand + $2 WHERE id = $3',
+          [volume, volume, market.id]
+        );
+      } else if (side === 'sell') {
+        // For selling, we'd need to check player inventory, which is not modeled yet.
+        // For now, we'll just assume the player has the resources.
+        await client.query(
+          'UPDATE players SET credits = credits + $1 WHERE id = $2',
+          [totalCost, playerId]
+        );
+        await client.query(
+          'UPDATE market_data SET supply = supply + $1, demand = demand - $2 WHERE id = $3',
+          [volume, volume, market.id]
+        );
+      } else {
+        throw new Error(`Invalid trade side: ${side}`);
+      }
+
+      // 4. Record transaction history (disabled until table is created)
+      // TODO: Create player_transactions table and uncomment this
+      // await client.query(
+      //   'INSERT INTO player_transactions (id, player_id, transaction_type, resource_id, quantity, unit_price, location) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+      //   [uuidv4(), playerId, side, resourceId, volume, price, { station: stationId }]
+      // );
+
+      return { success: true, totalCost, newCredits: side === 'buy' ? player.credits - totalCost : player.credits + totalCost };
+    });
+  }
 }
 
 export default MarketRepository;

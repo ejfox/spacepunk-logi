@@ -17,7 +17,7 @@
       :columns="3"
       @action="handleAction"
     >
-      Use keyboard shortcuts or click to execute commands
+      Use number keys 1-7 or click to execute commands
     </ActionGrid>
 
     <!-- Event Log -->
@@ -142,7 +142,7 @@ const locationStatusItems = computed(() => [
 const availableActions = computed(() => [
   {
     id: 'refuel',
-    key: 'R',
+    key: '1',
     label: 'REFUEL',
     cost: `${getFuelPrice()} CR`,
     disabled: isProcessing.value || credits.value < getFuelPrice() || fuel.value >= maxFuel.value,
@@ -150,14 +150,14 @@ const availableActions = computed(() => [
   },
   {
     id: 'trade',
-    key: 'T',
+    key: '2',
     label: 'TRADE',
     disabled: isProcessing.value,
     variant: 'primary'
   },
   {
     id: 'travel',
-    key: 'V',
+    key: '3',
     label: 'TRAVEL',
     cost: '20 FUEL',
     disabled: isProcessing.value || fuel.value < 20,
@@ -165,7 +165,7 @@ const availableActions = computed(() => [
   },
   {
     id: 'explore',
-    key: 'E',
+    key: '4',
     label: 'EXPLORE',
     cost: '10 FUEL',
     disabled: isProcessing.value || fuel.value < 10,
@@ -173,7 +173,7 @@ const availableActions = computed(() => [
   },
   {
     id: 'spy',
-    key: 'S',
+    key: '5',
     label: 'SPY',
     cost: '+HEAT',
     disabled: isProcessing.value,
@@ -181,14 +181,14 @@ const availableActions = computed(() => [
   },
   {
     id: 'wait',
-    key: 'W',
+    key: '6',
     label: 'WAIT',
     disabled: isProcessing.value,
     variant: 'default'
   },
   {
     id: 'crew',
-    key: 'C',
+    key: '7',
     label: 'CREW',
     disabled: isProcessing.value,
     variant: 'primary'
@@ -640,15 +640,18 @@ const reputationStatusItems = computed(() => [
 function handleKeyPress(event) {
   if (isProcessing.value) return
   
-  const key = event.key.toLowerCase()
+  // Don't interfere with copy/paste or other modifier key combinations
+  if (event.metaKey || event.ctrlKey || event.altKey) return
+  
+  const key = event.key
   const actionMap = {
-    'r': 'refuel',
-    't': 'trade',
-    'v': 'travel',
-    'e': 'explore',
-    's': 'spy',
-    'w': 'wait',
-    'c': 'crew'
+    '1': 'refuel',
+    '2': 'trade', 
+    '3': 'travel',
+    '4': 'explore',
+    '5': 'spy',
+    '6': 'wait',
+    '7': 'crew'
   }
   
   if (actionMap[key]) {

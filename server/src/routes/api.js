@@ -1258,20 +1258,19 @@ router.get('/market/dollhouse', async (req, res) => {
 // Execute market trade
 router.post('/market/trade', async (req, res) => {
   try {
-    const { resourceId, side, volume, playerId } = req.body;
+    const { resourceId, side, volume, playerId, stationId } = req.body;
     
-    if (!resourceId || !side || !volume || !playerId) {
+    if (!resourceId || !side || !volume || !playerId || !stationId) {
       return res.status(400).json({ 
-        error: 'Missing required fields: resourceId, side, volume, playerId' 
+        error: 'Missing required fields: resourceId, side, volume, playerId, stationId' 
       });
     }
     
-    const result = dollhouseMarket.executeMarketOrder(resourceId, side, volume, playerId);
+    const result = await marketRepo.executeTrade(stationId, resourceId, side, volume, playerId);
     
     res.json({
       message: 'Trade executed successfully',
-      trade: result,
-      marketSnapshot: dollhouseMarket.getMarketSnapshot()[resourceId]
+      trade: result
     });
   } catch (error) {
     console.error('Error executing trade:', error);

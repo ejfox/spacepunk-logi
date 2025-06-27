@@ -7,6 +7,8 @@ import MissionGenerator from '../missions/MissionGenerator.js';
 import { MissionRepository } from '../repositories/MissionRepository.js';
 import TrainingQueue from '../training/TrainingQueue.js';
 import { TrainingQueueRepository } from '../repositories/TrainingQueueRepository.js';
+import { MicroNarrativeGenerator } from '../narrative/MicroNarrativeGenerator.js';
+import { CrewRepository } from '../repositories/CrewRepository.js';
 
 export class TickEngine extends EventEmitter {
   constructor(tickInterval) {
@@ -28,6 +30,11 @@ export class TickEngine extends EventEmitter {
     // Initialize training systems
     this.trainingQueue = new TrainingQueue();
     this.trainingQueueRepository = new TrainingQueueRepository();
+    
+    // Initialize narrative generation systems
+    this.microNarrative = new MicroNarrativeGenerator();
+    this.crewRepository = new CrewRepository();
+    this.narrativeRotationIndex = 0; // Rotate through crew for narrative generation
     
     // Forward market events
     this.marketSimulation.on('marketEvent', (event) => {
@@ -111,6 +118,7 @@ export class TickEngine extends EventEmitter {
       await this.processMarketSystems();
       await this.processMissionSystems();
       await this.processFactionSystems();
+      await this.processNarrativeGeneration();
       
       // Record tick completion
       await this.recordTickCompletion(tickStartTime);
@@ -518,6 +526,125 @@ export class TickEngine extends EventEmitter {
   async processFactionSystems() {
     // TODO: Implement reputation changes, political shifts
     console.log('Processing faction systems...');
+  }
+
+  async processNarrativeGeneration() {
+    try {
+      // Only generate narratives every few ticks to avoid overwhelming the LLM queue
+      const shouldGenerateNarratives = this.currentTick % 3 === 0; // Every 3rd tick
+      
+      if (!shouldGenerateNarratives) return;
+      
+      console.log('🎭 Processing narrative generation...');
+      
+      // Get all active crew members across all players
+      const activeCrew = await this.crewRepository.findActiveCrew();
+      
+      if (activeCrew.length === 0) return;
+      
+      // Rotate through crew members - process 2-3 per tick to spread load
+      const crewPerTick = Math.min(3, activeCrew.length);
+      const startIndex = this.narrativeRotationIndex % activeCrew.length;
+      const crewToProcess = [];
+      
+      for (let i = 0; i < crewPerTick; i++) {
+        const index = (startIndex + i) % activeCrew.length;
+        crewToProcess.push(activeCrew[index]);
+      }
+      
+      // Update rotation index for next tick
+      this.narrativeRotationIndex = (this.narrativeRotationIndex + crewPerTick) % activeCrew.length;
+      
+      // Generate narratives for selected crew (low priority - don't block other operations)
+      const narrativePromises = crewToProcess.map(async (crew) => {
+        try {
+          // Pick 1-2 random narrative types to refresh each tick
+          const narrativeTypes = ['description', 'health', 'morale', 'stress', 'skill', 'trait', 'background', 'performance'];
+          const typesToGenerate = this.selectRandomNarrativeTypes(narrativeTypes);
+          
+          for (const type of typesToGenerate) {
+            // Generate with low priority so it doesn't interfere with user requests
+            const narrative = await this.microNarrative.generateCrewNarrative(crew, type, {}, 'low');
+            
+            // Store the generated narrative in crew record
+            await this.updateCrewNarrative(crew.id, type, narrative);
+          }
+          
+          console.log(`📝 Generated ${typesToGenerate.join(', ')} narratives for ${crew.name}`);
+          
+        } catch (error) {
+          console.warn(`Failed to generate narratives for ${crew.name}:`, error.message);
+        }
+      });
+      
+      // Process narratives without blocking tick completion
+      await Promise.allSettled(narrativePromises);
+      
+      // Also generate ambient world narratives occasionally
+      if (this.currentTick % 10 === 0) {
+        await this.generateAmbientWorldNarratives();
+      }
+      
+      this.emit('narrative:generated', {
+        tick: this.currentTick,
+        crewProcessed: crewToProcess.length,
+        queueStats: this.microNarrative.getQueueStats()
+      });
+      
+    } catch (error) {
+      console.error('Error in narrative generation:', error);
+    }
+  }
+
+  selectRandomNarrativeTypes(allTypes) {
+    // Generate 1-2 random narrative types per crew member per tick
+    const count = Math.floor(Math.random() * 2) + 1; // 1 or 2 types
+    const shuffled = [...allTypes].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, count);
+  }
+
+  async updateCrewNarrative(crewId, narrativeType, narrative) {
+    try {
+      // Store narrative in crew_narratives table or update crew record
+      await query(
+        `UPDATE crew_members 
+         SET ${narrativeType}_narrative = $1, ${narrativeType}_narrative_updated = NOW()
+         WHERE id = $2`,
+        [narrative, crewId]
+      );
+    } catch (error) {
+      // Table might not have narrative columns yet, that's okay
+      console.warn(`Could not store ${narrativeType} narrative for crew ${crewId}:`, error.message);
+    }
+  }
+
+  async generateAmbientWorldNarratives() {
+    try {
+      // Generate ambient station announcements, news, corporate memos
+      const ambientTypes = [
+        { type: 'station_announcement', context: { station: 'Earth Station Alpha' } },
+        { type: 'corporate_memo', context: { department: 'Operations' } },
+        { type: 'market_analysis', context: { trend: 'volatile' } },
+        { type: 'safety_bulletin', context: { incident: 'reality_storm' } }
+      ];
+      
+      const selected = ambientTypes[Math.floor(Math.random() * ambientTypes.length)];
+      
+      // Generate ambient narrative with low priority
+      const narrative = await this.microNarrative.generateSystemNarrative(selected.type, selected.context, 'low');
+      
+      console.log(`🌌 Generated ambient narrative: ${selected.type}`);
+      
+      // Broadcast to all connected clients
+      this.emit('ambient:narrative', {
+        type: selected.type,
+        narrative,
+        tick: this.currentTick
+      });
+      
+    } catch (error) {
+      console.warn('Failed to generate ambient narratives:', error.message);
+    }
   }
 
   async recordTickCompletion(startTime) {

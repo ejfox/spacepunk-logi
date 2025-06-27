@@ -6,7 +6,6 @@ export class MicroNarrativeGenerator {
   constructor(seed = 'spacepunk-micro-narrative') {
     this.chance = new Chance(seed)
     this.missionGenerator = new MissionGenerator()
-    this.templates = this.initializeTemplates()
     
     // Initialize LLM queue with conservative rate limits
     this.llmQueue = new LLMQueue({
@@ -35,252 +34,6 @@ export class MicroNarrativeGenerator {
     this.llmQueue.on('error', ({ id, error, attempt }) => {
       console.log(`❌ LLM request failed: ${id} - ${error} (attempt ${attempt})`)
     })
-  }
-
-  initializeTemplates() {
-    return {
-      crew_hiring: [
-        "Employee {name} demonstrates acceptable compliance metrics for {skill} operations",
-        "Personnel file {name}: Previous corporate violations within tolerable parameters",
-        "Recruitment candidate {name} shows adequate {skill} competency scores",
-        "Background check {name}: Loyalty indicators sufficient for operational deployment"
-      ],
-      
-      crew_training: [
-        "Skill enhancement program yielded {improvement}% productivity increase for {name}",
-        "Employee {name} achieved Level {level} certification in {skill} methodology",
-        "Training completion: {name} now authorized for {skill} operational procedures",
-        "Performance metrics indicate {name}'s {skill} capabilities exceed minimum standards"
-      ],
-
-      market_price_change: [
-        "Market volatility alert: {resource} pricing adjusted {change}% due to supply chain optimization",
-        "Corporate memo: {resource} values fluctuated {change}% following sector-wide efficiency improvements",
-        "Economic indicator: {resource} demand patterns shifted {change}% per quarterly projections",
-        "Trade bulletin: {resource} pricing algorithms recalibrated, variance {change}%"
-      ],
-
-      fuel_consumption: [
-        "Propulsion efficiency report: Fuel expenditure {amount} units within operational parameters",
-        "Energy audit: {amount} fuel consumed during routine logistics operations",
-        "Resource utilization: {amount} units allocated to propulsion systems per corporate guidelines",
-        "Fuel management: {amount} units processed through authorized consumption channels"
-      ],
-
-      credits_earned: [
-        "Revenue generation: {amount} CR deposited following successful completion of contractual obligations",
-        "Financial update: Asset portfolio increased by {amount} CR through operational excellence",
-        "Income statement: {amount} CR credited per approved transaction protocols",
-        "Profit margin: {amount} CR earned within acceptable corporate performance metrics"
-      ],
-
-      credits_spent: [
-        "Expenditure authorization: {amount} CR allocated for essential operational requirements",
-        "Budget allocation: {amount} CR processed through approved procurement channels",
-        "Cost center update: {amount} CR expended per quarterly fiscal guidelines",
-        "Payment processing: {amount} CR transferred through corporate financial networks"
-      ],
-
-      // COMPREHENSIVE CREW NARRATIVE TEMPLATES
-      crew_description: [
-        "Employee {name} demonstrates exceptional competency in {role} operations despite documented paranoia regarding interdimensional shipping manifests and recurring nightmares about vacuum exposure incidents.",
-        "Personnel file #{id}: {name} maintains productivity standards with minimal psychotic episodes and acceptable levels of radiation-induced mutation following {experience} hours of deep space logistics operations.",
-        "HR Assessment: {name} exhibits professional {role} qualifications including successful completion of corporate anger management protocols and basic reality-anchor certification.",
-        "Staff Directory: Level {level} {name} cleared for operational deployment despite ongoing existential crisis and three documented temporal paradox incidents during routine cargo transfers."
-      ],
-
-      crew_health_status: [
-        "Medical Assessment: {name}'s cybernetic implants show minimal rejection symptoms and cosmic radiation scarring remains within acceptable disfigurement parameters for {status} operational status.",
-        "Health Screening: Employee {name} demonstrates {status} physiological integrity despite recurring void-whisper hallucinations and three documented cases of temporal displacement syndrome.",
-        "Occupational Wellness: {name} cleared for {status} duty classification following successful treatment for interdimensional parasite exposure and reality-anchor recalibration procedures.",
-        "Corporate Medical: {name} maintains {status} fitness standards with acceptable levels of mutation and psychological fracturing from prolonged exposure to quantum shipping calculations."
-      ],
-
-      crew_morale_assessment: [
-        "Employee Satisfaction: {name} reports {level} job satisfaction despite recurring nightmares about deceased crew members and ongoing existential dread regarding time-dilated family aging rates.",
-        "Psychological Profile: {name} exhibits {level} workplace motivation while successfully managing survivor guilt from fourteen previous shipping disasters and chronic anxiety regarding cargo manifest anomalies.",
-        "Morale Evaluation: {name} demonstrates {level} engagement with corporate values despite documented cases of reality dissociation and periodic episodes involving conversation with sentient asteroid mining equipment.",
-        "Workplace Assessment: {name} maintains {level} productivity enthusiasm ratings while coping with mild space madness and recurring visions of alternate timeline catastrophes."
-      ],
-
-      crew_stress_analysis: [
-        "Stress Management: {name} operates at {level} psychological pressure tolerance despite ongoing trauma from black hole proximity negotiations and chronic insomnia caused by interdimensional shipping schedules.",
-        "Mental Health Alert: {name} experiencing {level} occupational stress indicators including reality dissociation episodes and documented attempts to communicate with deceased navigation systems.",
-        "Wellness Assessment: {name} managing {level} operational demand coefficients while successfully containing psychological breakdown symptoms and maintaining basic reality-anchor functionality.",
-        "Psychological Monitoring: {name} exhibits {level} stress response patterns following exposure to cosmic horror entities and routine filing of insurance claims for dimension-based cargo damage."
-      ],
-
-      crew_skill_evaluation: [
-        "Technical Competency: {name} demonstrates {level} {skill} proficiency including successful negotiation with sentient machinery and documented expertise in reality-storm equipment repair protocols.",
-        "Skills Assessment: {name}'s {level} {skill} capabilities include specialized training in interdimensional pirate conflict resolution and advanced certification in temporal paradox incident management.",
-        "Professional Review: {name} maintains {level} certification in {skill} operations with documented success in black hole proximity shipping and expertise in cargo manifest discrepancy resolution procedures.",
-        "Competency Analysis: {name} achieved {level} mastery of {skill} protocols including advanced training in void-exposure survival techniques and successful completion of sentient asteroid negotiation seminars."
-      ],
-
-      crew_trait_analysis: [
-        "Behavioral Assessment: {name}'s '{trait}' characteristics translate effectively to space logistics operations including improved performance during reality storms and enhanced compatibility with malfunctioning AI systems.",
-        "Personality Review: Employee {name}'s '{trait}' traits provide valuable workplace advantages including resistance to cosmic horror-induced madness and natural aptitude for interdimensional cargo handling.",
-        "Character Evaluation: {name}'s '{trait}' disposition proves beneficial for corporate objectives including successful mediation of crew conflicts during temporal displacement incidents and effective communication with hostile alien customs officials.",
-        "Psychological Profile: {name}'s '{trait}' behavioral patterns enhance operational efficiency including demonstrated ability to maintain sanity during reality-bending shipping emergencies and natural talent for explosive problem-solving in pirate encounter scenarios."
-      ],
-
-      crew_assignment_update: [
-        "Duty Roster Update: {name} reassigned to {task} per operational requirements",
-        "Work Order Assignment: Employee {name} allocated to {task} responsibilities",
-        "Task Distribution: {name} designated for {task} completion per workflow optimization",
-        "Resource Allocation: {name} deployed to {task} duties following efficiency analysis"
-      ],
-
-      crew_experience_gain: [
-        "Professional Development: {name} accumulated additional {amount} experience units in {skill}",
-        "Learning Metrics: Employee {name} achieved {amount} competency points through field operations",
-        "Skill Enhancement: {name} logged {amount} training hours advancing {skill} proficiency",
-        "Career Progression: {name} earned {amount} experience credits toward next certification level"
-      ],
-
-      crew_level_promotion: [
-        "Advancement Notice: {name} promoted to Level {level} {role} effective immediately",
-        "Career Ladder Update: Employee {name} elevated to {level} classification per performance review",
-        "Promotion Authorization: {name} approved for Level {level} responsibilities and compensation",
-        "Rank Progression: {name} advanced to {level} status following competency evaluation"
-      ],
-
-      crew_hiring_cost: [
-        "Recruitment Expense: {name} onboarding processed at {cost} CR total acquisition cost",
-        "Human Capital Investment: {cost} CR allocated for {name}'s integration into corporate structure",
-        "Personnel Acquisition: {name} recruitment finalized with {cost} CR budgetary allocation",
-        "Staffing Cost Analysis: {name} hiring represents {cost} CR human resources expenditure"
-      ],
-
-      crew_background_lore: [
-        "Personnel Origin: {name} transferred from {background} sector with applicable skill transferability",
-        "Employment History: {name}'s {background} experience provides relevant operational context",
-        "Cultural Integration: {name}'s {background} heritage offers valuable perspective for team dynamics",
-        "Background Verification: {name} originates from {background} region with standard corporate clearance"
-      ],
-
-      crew_relationship_dynamics: [
-        "Interpersonal Assessment: {name} maintains {relationship} working relationships with crew members",
-        "Team Integration Report: {name} demonstrates {relationship} collaborative effectiveness",
-        "Social Dynamic Analysis: {name} exhibits {relationship} interaction patterns with colleagues",
-        "Workplace Harmony Index: {name} contributes {relationship} social cohesion to team environment"
-      ],
-
-      crew_performance_review: [
-        "Quarterly Evaluation: {name} achieved {rating} performance metrics across all operational categories",
-        "Employee Assessment: {name} demonstrates {rating} competency levels per corporate standards",
-        "Performance Analysis: {name} maintains {rating} productivity output within acceptable ranges",
-        "Efficiency Rating: {name} operates at {rating} effectiveness compared to departmental averages"
-      ],
-
-      heat_increase: [
-        "Compliance monitoring: Corporate oversight interest increased by {amount} points",
-        "Regulatory attention: Surveillance parameters adjusted upward by {amount} units",
-        "Risk assessment: Corporate scrutiny levels elevated {amount} degrees",
-        "Oversight alert: Management attention coefficients raised {amount} points"
-      ],
-
-      system_status: [
-        "All systems operating within normal corporate-approved parameters",
-        "Routine maintenance protocols executed according to regulatory compliance standards",
-        "Equipment functionality verified per standardized operational procedures",
-        "Technical specifications confirmed to meet minimum corporate requirements"
-      ],
-
-      location_travel: [
-        "Navigation update: Vessel relocated to {location} per authorized flight plan",
-        "Transit completion: Arrival at {location} logged in corporate database",
-        "Position report: Current coordinates {location} confirmed by navigation systems",
-        "Location status: Operational theater updated to {location} sector"
-      ]
-    }
-  }
-
-  async generateCrewHiringNarrative(crewMember) {
-    try {
-      // Try LLM first
-      const prompt = `Transform this crew hiring data into a 1-sentence corporate memo about employee onboarding:
-
-Crew Member: ${crewMember.name}
-Background: ${crewMember.cultural_background}
-Primary Skill: ${crewMember.engineering || crewMember.piloting || crewMember.combat ? 
-  'Engineering' : 'Operations'}
-Trait: ${crewMember.trait_handy ? 'Mechanically Inclined' : 'Standard Competency'}
-
-Write as a corporate HR notification. Use bureaucratic language that treats space logistics as mundane office work.`
-
-      const narrative = await this.callMicroLLM(prompt)
-      return narrative || this.generateFallbackNarrative('crew_hiring', {
-        name: crewMember.name,
-        skill: this.getTopSkill(crewMember)
-      })
-    } catch (error) {
-      return this.generateFallbackNarrative('crew_hiring', {
-        name: crewMember.name,
-        skill: this.getTopSkill(crewMember)
-      })
-    }
-  }
-
-  async generateTrainingNarrative(trainingData) {
-    try {
-      const prompt = `Transform this training completion into a 1-sentence corporate performance review:
-
-Employee: ${trainingData.crewMember.name}
-Skill Improved: ${trainingData.skill}
-Progress Made: ${trainingData.improvement}%
-Training Type: ${trainingData.trainingType}
-
-Write as a corporate training department memo. Treat space skills like office productivity improvements.`
-
-      const narrative = await this.callMicroLLM(prompt)
-      return narrative || this.generateFallbackNarrative('crew_training', {
-        name: trainingData.crewMember.name,
-        skill: trainingData.skill,
-        improvement: trainingData.improvement,
-        level: Math.floor(trainingData.improvement / 20) + 1
-      })
-    } catch (error) {
-      return this.generateFallbackNarrative('crew_training', trainingData)
-    }
-  }
-
-  async generateMarketNarrative(marketChange) {
-    try {
-      const prompt = `Transform this market data into a 1-sentence corporate trade bulletin:
-
-Resource: ${marketChange.resourceName}
-Price Change: ${marketChange.priceChange}%
-Station: ${marketChange.stationName}
-Direction: ${marketChange.priceChange > 0 ? 'Increased' : 'Decreased'}
-
-Write as a corporate economics department memo. Treat galactic trade like quarterly earnings reports.`
-
-      const narrative = await this.callMicroLLM(prompt)
-      return narrative || this.generateFallbackNarrative('market_price_change', {
-        resource: marketChange.resourceName,
-        change: marketChange.priceChange
-      })
-    } catch (error) {
-      return this.generateFallbackNarrative('market_price_change', {
-        resource: marketChange.resourceName,
-        change: marketChange.priceChange
-      })
-    }
-  }
-
-  async generateActionNarrative(actionType, actionData) {
-    const narrativeMap = {
-      'fuel_used': () => this.generateFallbackNarrative('fuel_consumption', { amount: actionData.fuel_change }),
-      'credits_earned': () => this.generateFallbackNarrative('credits_earned', { amount: actionData.credits_change }),
-      'credits_spent': () => this.generateFallbackNarrative('credits_spent', { amount: Math.abs(actionData.credits_change) }),
-      'heat_gained': () => this.generateFallbackNarrative('heat_increase', { amount: actionData.heat_change }),
-      'location_changed': () => this.generateFallbackNarrative('location_travel', { location: actionData.location }),
-      'system_check': () => this.generateFallbackNarrative('system_status', {})
-    }
-
-    const generator = narrativeMap[actionType]
-    return generator ? generator() : `Corporate log: ${actionType} operation completed within standard parameters.`
   }
 
   async callMicroLLM(prompt, maxRetries = 3) {
@@ -337,18 +90,6 @@ EXAMPLE RESPONSES:
     return null
   }
 
-  generateFallbackNarrative(type, data) {
-    const templates = this.templates[type] || ["Operation completed within standard parameters."]
-    let template = this.chance.pickone(templates)
-    
-    // Replace template variables
-    Object.entries(data).forEach(([key, value]) => {
-      template = template.replace(new RegExp(`{${key}}`, 'g'), value)
-    })
-    
-    return template
-  }
-
   // ============ ATOMIC CREW NARRATIVE SYSTEM ============
   
   // Core atomic building blocks
@@ -360,55 +101,47 @@ EXAMPLE RESPONSES:
     performance: [[85, 'EXCEEDS EXPECTATIONS'], [70, 'MEETS EXPECTATIONS'], [55, 'SATISFACTORY'], [40, 'NEEDS IMPROVEMENT'], [0, 'BELOW STANDARDS']]
   }
 
-  // Atomic narrative generator with queue support
+  // Atomic narrative generator - pure LLM only
   async generateCrewNarrative(crewMember, type, context = {}, priority = 'normal') {
     const ctx = this.buildCrewContext(crewMember, context)
     const prompt = this.buildPrompt(type, ctx)
     
-    // Wrap LLM call in queue function
-    const llmFunction = () => this.callMicroLLM(prompt)
-    
-    try {
-      return await this.llmQueue.enqueue(llmFunction, priority) || this.generateFallbackNarrative(`crew_${type}`, ctx)
-    } catch (error) {
-      console.log(`🔄 LLM failed for ${crewMember.name} ${type}, using fallback`)
-      return this.generateFallbackNarrative(`crew_${type}`, ctx)
-    }
+    // Let queue manager handle retries, return null if it ultimately fails
+    return await this.llmQueue.enqueue(() => this.callMicroLLM(prompt), priority)
   }
 
-  // Batch crew narrative generation for efficiency
+  // Batch crew narrative generation - pure LLM only
   async batchGenerateCrewNarratives(crewMember, types = ['description', 'health', 'morale', 'stress', 'skill', 'trait'], priority = 'normal') {
     const ctx = this.buildCrewContext(crewMember)
     
-    const llmFunctions = types.map(type => ({
-      type,
-      function: () => this.callMicroLLM(this.buildPrompt(type, ctx))
-    }))
+    const llmFunctions = types.map(type => () => this.callMicroLLM(this.buildPrompt(type, ctx)))
+    const results = await this.llmQueue.batchEnqueue(llmFunctions, priority)
     
-    try {
-      const results = await this.llmQueue.batchEnqueue(
-        llmFunctions.map(({ function: llmFunc }) => llmFunc),
-        priority
-      )
+    // Map results back to types - nulls are fine, UI deals with it
+    const narratives = {}
+    types.forEach((type, index) => {
+      narratives[type] = results[index] // null if LLM failed, that's life
+    })
+    
+    return narratives
+  }
+
+  // Generate system/ambient narratives - pure LLM only
+  async generateSystemNarrative(type, context = {}, priority = 'low') {
+    const systemPrompts = {
+      station_announcement: `Generate a 1-sentence station announcement for ${context.station || 'a space station'} that sounds like corporate PA system but reveals weird space logistics. Example: "Attention personnel: Temporal displacement incident at docking bay 7 has been resolved and all crew members reported to correct timeline per safety protocols."`,
       
-      // Map results back to types
-      const narratives = {}
-      types.forEach((type, index) => {
-        narratives[type] = results[index] || this.generateFallbackNarrative(`crew_${type}`, ctx)
-      })
+      corporate_memo: `Write a 1-sentence corporate memo from ${context.department || 'Management'} that treats cosmic horror as routine business operations. Example: "Reminder: All reality-anchor equipment must be calibrated weekly following recent interdimensional shipping manifest errors and associated staff disappearances."`,
       
-      return narratives
-    } catch (error) {
-      console.log(`🔄 Batch LLM failed for ${crewMember.name}, using fallbacks`)
+      market_analysis: `Generate a 1-sentence market analysis treating space trading as normal business that accidentally reveals insane cargo types. Example: "Market volatility for sentient crystals remains ${context.trend || 'stable'} following successful negotiations with asteroid-based consciousness networks and routine piracy insurance claims."`,
       
-      // Generate fallbacks for all types
-      const narratives = {}
-      types.forEach(type => {
-        narratives[type] = this.generateFallbackNarrative(`crew_${type}`, ctx)
-      })
-      
-      return narratives
+      safety_bulletin: `Write a 1-sentence safety bulletin about ${context.incident || 'workplace hazards'} that makes cosmic dangers sound like OSHA violations. Example: "Safety reminder: All crew must wear reality-anchor harnesses when handling cargo manifests from alternate dimensions per corporate liability insurance requirements."`
     }
+    
+    const prompt = systemPrompts[type] || `Generate a 1-sentence corporate narrative about ${type} treating space weirdness as normal business operations.`
+    
+    // Pure LLM or nothing
+    return await this.llmQueue.enqueue(() => this.callMicroLLM(prompt), priority)
   }
 
   // Get queue statistics for monitoring
@@ -474,29 +207,4 @@ EXAMPLE RESPONSES:
   getTopSkill(skills) { return Object.keys(skills).reduce((a, b) => skills[a] > skills[b] ? a : b) }
   levelFor(type, value) { return this.statLevels[type]?.find(([threshold]) => value >= threshold)?.[1] || 'UNKNOWN' }
   calculatePerformance(crew) { return Math.max(0, Math.min(100, ((crew.morale || 50) + (crew.health || 100) - (crew.stress || 0)) / 2)) }
-
-  // Utility method to batch generate narratives for UI components
-  async generateUITooltips(gameState) {
-    const tooltips = {}
-    
-    // Crew tooltips
-    if (gameState.crew) {
-      tooltips.crew = {}
-      for (const member of gameState.crew) {
-        tooltips.crew[member.id] = await this.generateCrewHiringNarrative(member)
-      }
-    }
-    
-    // Market tooltips
-    if (gameState.marketChanges) {
-      tooltips.market = {}
-      for (const change of gameState.marketChanges) {
-        tooltips.market[change.resourceName] = await this.generateMarketNarrative(change)
-      }
-    }
-    
-    return tooltips
-  }
 }
-
-export default MicroNarrativeGenerator
