@@ -96,7 +96,7 @@ watch(() => props.events.length, async () => {
 .event-log {
   border: 2px solid #00ff00;
   background: #001100;
-  font-family: 'Courier New', monospace;
+  font-family: 'MonaspiceAr Nerd Font', 'MonaspiceAr', 'Courier New', monospace;
   color: #00ff00;
   min-height: 400px;
   display: flex;
@@ -116,11 +116,13 @@ watch(() => props.events.length, async () => {
   font-weight: bold;
   font-size: 18px;
   letter-spacing: 1px;
+  font-family: 'MonaspiceNe Nerd Font', 'MonaspiceNe', 'Courier New', monospace; /* Neon for headers */
 }
 
 .log-count {
   font-size: 14px;
   opacity: 0.8;
+  font-family: 'MonaspiceXe Nerd Font', 'MonaspiceXe', 'Courier New', monospace; /* Xenon for metadata */
 }
 
 .log-content {
@@ -161,6 +163,7 @@ watch(() => props.events.length, async () => {
   padding: 4px 0;
   border-left: 3px solid transparent;
   padding-left: 8px;
+  font-family: 'MonaspiceAr Nerd Font', 'MonaspiceAr', 'Courier New', monospace; /* Argon for regular text */
 }
 
 .log-entry.recent {
@@ -168,32 +171,42 @@ watch(() => props.events.length, async () => {
   color: #ffffff;
   border-left-color: #ffffff;
   background: rgba(255, 255, 255, 0.05);
+  font-family: 'MonaspiceNe Nerd Font', 'MonaspiceNe', 'Courier New', monospace; /* Neon for emphasis */
 }
 
 .log-entry.warning {
   color: #ffff00;
   border-left-color: #ffff00;
+  font-family: 'MonaspiceRn Nerd Font', 'MonaspiceRn', 'Courier New', monospace; /* Radon for warnings */
 }
 
 .log-entry.danger {
   color: #ff0000;
   border-left-color: #ff0000;
+  font-family: 'MonaspiceRn Nerd Font', 'MonaspiceRn', 'Courier New', monospace; /* Radon for alerts */
+  font-weight: bold;
 }
 
 .log-entry.success {
   color: #00ff00;
   border-left-color: #00ff00;
+  font-family: 'MonaspiceKr Nerd Font', 'MonaspiceKr', 'Courier New', monospace; /* Krypton for success */
 }
 
 .log-entry.info {
   color: #00ffff;
   border-left-color: #00ffff;
+  font-family: 'MonaspiceKr Nerd Font', 'MonaspiceKr', 'Courier New', monospace; /* Krypton for narrative */
+  font-style: italic;
 }
 
 .log-entry.cascade {
   color: #ff6600;
   border-left-color: #ff6600;
   font-weight: bold;
+  font-family: 'MonaspiceNe Nerd Font', 'MonaspiceNe', 'Courier New', monospace; /* Neon for system events */
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .log-timestamp {
@@ -201,6 +214,8 @@ watch(() => props.events.length, async () => {
   margin-right: 12px;
   font-size: 12px;
   font-weight: normal;
+  font-family: 'MonaspiceXe Nerd Font', 'MonaspiceXe', 'Courier New', monospace; /* Xenon for timestamps */
+  opacity: 0.7;
 }
 
 .log-message {
