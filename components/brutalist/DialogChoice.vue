@@ -63,10 +63,6 @@
             </div>
           </div>
           
-          <!-- Narrative Outcome -->
-          <div v-if="choice.consequences?.narrative" class="outcome-section">
-            <div class="outcome-text">{{ choice.consequences.narrative }}</div>
-          </div>
         </div>
       </div>
       
