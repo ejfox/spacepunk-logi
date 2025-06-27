@@ -56,7 +56,7 @@
               </div>
               <div v-if="choice.consequences.heat" class="impact-item">
                 <span class="impact-label">HEAT</span>
-                <span class="impact-value" :class="getImpactClass(choice.consequences.heat)">
+                <span class="impact-value" :class="getHeatImpactClass(choice.consequences.heat)">
                   {{ formatImpact(choice.consequences.heat) }}
                 </span>
               </div>
@@ -188,6 +188,20 @@ function getImpactClass(value) {
   const numValue = parseInt(value)
   if (numValue > 0) return 'impact-positive'
   if (numValue < 0) return 'impact-negative'
+  return 'impact-neutral'
+}
+
+function getHeatImpactClass(value) {
+  if (typeof value === 'string') {
+    // For heat, positive is bad (red), negative is good (green)
+    if (value.includes('+')) return 'impact-negative' // Red for +heat
+    if (value.includes('-')) return 'impact-positive' // Green for -heat
+    return 'impact-neutral'
+  }
+  
+  const numValue = parseInt(value)
+  if (numValue > 0) return 'impact-negative' // Red for +heat
+  if (numValue < 0) return 'impact-positive' // Green for -heat
   return 'impact-neutral'
 }
 
