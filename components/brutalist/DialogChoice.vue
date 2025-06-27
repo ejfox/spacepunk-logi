@@ -170,7 +170,16 @@ function formatImpact(value) {
   if (typeof value === 'string') {
     return value
   }
-  return value > 0 ? `+${value}` : `${value}`
+  
+  // Make predictions fuzzy/uncertain
+  const numValue = parseInt(value)
+  const variance = Math.max(5, Math.abs(numValue * 0.2)) // 20% variance, minimum 5
+  const min = Math.floor(numValue - variance)
+  const max = Math.ceil(numValue + variance)
+  
+  if (numValue === 0) return '~0'
+  if (numValue > 0) return `+${min}-${max}`
+  return `${max}-${min}`
 }
 
 function getImpactClass(value) {

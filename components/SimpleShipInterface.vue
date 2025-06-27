@@ -83,6 +83,14 @@ const props = defineProps({
 const fuel = ref(100)
 const maxFuel = ref(100)
 const credits = ref(1000)
+
+// Safeguard: Reset credits if they become NaN
+function ensureValidCredits() {
+  if (isNaN(credits.value) || credits.value === null || credits.value === undefined) {
+    console.warn('Credits were NaN, resetting to 1000')
+    credits.value = 1000
+  }
+}
 const currentLocation = ref('Earth Station Alpha')
 const heatLevel = ref(0)
 const currentTick = ref(1)
@@ -354,21 +362,44 @@ function handleDialogChoice(choiceData) {
     }
     
     if (choice.consequences.credits) {
-      const creditsStr = choice.consequences.credits
+      const creditsStr = choice.consequences.credits.toString()
       let creditsChange = 0
       
+      console.log('Processing credits:', creditsStr) // Debug
+      
       // Handle range like "+50-200" or specific like "+150"
-      if (creditsStr.includes('-')) {
-        const range = creditsStr.replace(/[+-]/g, '').split('-')
-        const min = parseInt(range[0])
-        const max = parseInt(range[1])
-        creditsChange = Math.floor(Math.random() * (max - min + 1)) + min
-        if (creditsStr.startsWith('-')) creditsChange = -creditsChange
+      if (creditsStr.includes('-') && !creditsStr.startsWith('-')) {
+        // This is a range like "+50-200", not a negative number
+        const parts = creditsStr.split('-')
+        if (parts.length === 2) {
+          const minStr = parts[0].replace(/[+]/g, '') // Remove +
+          const maxStr = parts[1]
+          const min = parseInt(minStr)
+          const max = parseInt(maxStr)
+          
+          if (!isNaN(min) && !isNaN(max)) {
+            creditsChange = Math.floor(Math.random() * (max - min + 1)) + min
+            if (creditsStr.startsWith('-')) creditsChange = -creditsChange
+          } else {
+            console.error('Failed to parse credits range:', creditsStr, 'min:', min, 'max:', max)
+            creditsChange = 0
+          }
+        }
       } else {
+        // Single value like "+150" or "-50"
         creditsChange = parseInt(creditsStr)
+        if (isNaN(creditsChange)) {
+          console.error('Failed to parse credits value:', creditsStr)
+          creditsChange = 0
+        }
       }
       
-      credits.value = Math.max(0, credits.value + creditsChange)
+      console.log('Credits change:', creditsChange) // Debug
+      ensureValidCredits() // Safety check
+      const newCredits = Math.max(0, credits.value + creditsChange)
+      console.log('Credits:', credits.value, '->', newCredits) // Debug
+      credits.value = newCredits
+      ensureValidCredits() // Safety check after update
     }
     
     if (choice.consequences.heat) {
@@ -680,39 +711,46 @@ onUnmounted(() => {
 <style scoped>
 .simple-ship-interface {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto auto auto 1fr;
-  gap: 8px;
-  padding: 8px;
+  grid-template-columns: 300px 1fr 300px;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 12px;
+  padding: 12px;
   font-family: 'Courier New', monospace;
   background: #000000;
   color: #ffffff;
   min-height: 100vh;
 }
 
+/* Ship Status Display */
 .simple-ship-interface > :first-child {
   grid-column: 1;
   grid-row: 1;
 }
 
+/* Action Grid */
 .simple-ship-interface > :nth-child(2) {
-  grid-column: 2;
-  grid-row: 1 / 4;
+  grid-column: 3;
+  grid-row: 1 / 3;
 }
 
+/* EventLog - THE STAR OF THE SHOW */
 .simple-ship-interface > :nth-child(3) {
-  grid-column: 1 / -1;
-  grid-row: 4;
+  grid-column: 1 / 3;
+  grid-row: 3;
+  min-height: 400px;
 }
 
+/* Location Status */
 .simple-ship-interface > :nth-child(4) {
   grid-column: 1;
   grid-row: 2;
 }
 
+/* Reputation Matrix */
 .simple-ship-interface > :nth-child(5) {
-  grid-column: 1;
-  grid-row: 3;
+  grid-column: 2;
+  grid-row: 1 / 3;
+  max-width: 100%;
 }
 
 .heat-warning {

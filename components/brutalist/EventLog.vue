@@ -94,15 +94,18 @@ watch(() => props.events.length, async () => {
 
 <style scoped>
 .event-log {
-  border: 1px solid #00ff00;
+  border: 2px solid #00ff00;
   background: #001100;
   font-family: 'Courier New', monospace;
   color: #00ff00;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
 }
 
 .log-header {
-  border-bottom: 1px solid #00ff00;
-  padding: 4px 8px;
+  border-bottom: 2px solid #00ff00;
+  padding: 12px 16px;
   background: #000000;
   display: flex;
   justify-content: space-between;
@@ -111,20 +114,22 @@ watch(() => props.events.length, async () => {
 
 .log-title {
   font-weight: bold;
-  font-size: 12px;
+  font-size: 18px;
+  letter-spacing: 1px;
 }
 
 .log-count {
-  font-size: 10px;
-  opacity: 0.7;
+  font-size: 14px;
+  opacity: 0.8;
 }
 
 .log-content {
-  padding: 8px;
-  max-height: 200px;
+  padding: 16px;
+  flex-grow: 1;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #00ff00 #001100;
+  line-height: 1.6;
 }
 
 .log-content::-webkit-scrollbar {
@@ -144,41 +149,58 @@ watch(() => props.events.length, async () => {
   color: #666666;
   font-style: italic;
   text-align: center;
-  padding: 16px;
+  padding: 24px;
+  font-size: 16px;
 }
 
 .log-entry {
-  margin: 1px 0;
-  font-size: 10px;
-  line-height: 1.3;
+  margin: 6px 0;
+  font-size: 16px;
+  line-height: 1.5;
   opacity: 0.9;
+  padding: 4px 0;
+  border-left: 3px solid transparent;
+  padding-left: 8px;
 }
 
 .log-entry.recent {
   opacity: 1;
   color: #ffffff;
+  border-left-color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .log-entry.warning {
   color: #ffff00;
+  border-left-color: #ffff00;
 }
 
 .log-entry.danger {
   color: #ff0000;
+  border-left-color: #ff0000;
 }
 
 .log-entry.success {
   color: #00ff00;
+  border-left-color: #00ff00;
 }
 
 .log-entry.info {
   color: #00ffff;
+  border-left-color: #00ffff;
+}
+
+.log-entry.cascade {
+  color: #ff6600;
+  border-left-color: #ff6600;
+  font-weight: bold;
 }
 
 .log-timestamp {
-  color: #666666;
-  margin-right: 8px;
-  font-size: 9px;
+  color: #888888;
+  margin-right: 12px;
+  font-size: 12px;
+  font-weight: normal;
 }
 
 .log-message {
