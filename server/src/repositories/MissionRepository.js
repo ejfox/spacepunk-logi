@@ -23,16 +23,16 @@ export class MissionRepository {
     
     const result = await query(
       `INSERT INTO missions (
-        id, type, difficulty, title, description, 
-        objectives, rewards, deadline_hours, risks, 
-        flavor_text, station_id, expires_at, generated_by, status
+        id, mission_type, difficulty_level, title, description, 
+        requirements, reward_credits, estimated_duration, risk_level, 
+        corporate_sponsor, target_location, expires_at, created_at, is_active
       )
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *`,
       [
         id, type, difficulty, title, description,
-        JSON.stringify(objectives), JSON.stringify(rewards), deadline, JSON.stringify(risks),
-        flavor_text, station_id, expiresAt, generated_by, 'available'
+        JSON.stringify(objectives || {}), rewards?.credits || 1000, `${deadline}h`, risks || 'low',
+        'Unknown Corp', station_id || 'Unknown Location', expiresAt, new Date(), true
       ]
     );
     

@@ -1,0 +1,16 @@
+{
+  "watch": ["src/**/*.js", ".env"],
+  "ignore": ["node_modules/**/*", "logs/**/*"],
+  "ext": "js,json",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "delay": 2000,
+  "verbose": true,
+  "restartable": "rs",
+  "events": {
+    "restart": "echo '🔄 Server restarting due to changes...'",
+    "crash": "echo '💥 Server crashed! Restarting in 2 seconds...'",
+    "start": "echo '🚀 Server starting...'"
+  }
+}

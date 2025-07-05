@@ -1,6 +1,7 @@
 import Chance from 'chance'
 import MissionGenerator from '../missions/MissionGenerator.js'
 import { StoryDNA } from '../narrative/StoryDNA.js'
+import { LLMQueue } from '../utils/LLMQueue.js'
 
 export class DialogGenerator {
   constructor(seed = 'spacepunk-dialog') {
@@ -8,6 +9,16 @@ export class DialogGenerator {
     this.missionGenerator = null // Create lazily
     this.storyDNA = new StoryDNA(seed)
     this.storyConsequenceEngine = null // Will be injected
+    
+    // Initialize LLM queue with conservative rate limits
+    this.llmQueue = new LLMQueue({
+      requestsPerMinute: 25, // Conservative limit
+      maxRetries: 3,
+      retryDelay: 1000
+    })
+    
+    // Set up queue event logging
+    this.setupQueueLogging()
   }
   
   getMissionGenerator() {
@@ -17,8 +28,31 @@ export class DialogGenerator {
     return this.missionGenerator
   }
   
+  setupQueueLogging() {
+    this.llmQueue.on('queued', ({ id, queueLength, priority }) => {
+      console.log(`📝 Dialog LLM request queued: ${id} (${priority}) - Queue: ${queueLength}`)
+    })
+    
+    this.llmQueue.on('processing', ({ id, attempt, queuedFor }) => {
+      console.log(`🤖 Processing dialog LLM request: ${id} (attempt ${attempt}, queued ${queuedFor}ms)`)
+    })
+    
+    this.llmQueue.on('completed', ({ id, responseTime, attempts }) => {
+      console.log(`✅ Dialog LLM request completed: ${id} in ${responseTime}ms (${attempts} attempts)`)
+    })
+    
+    this.llmQueue.on('error', ({ id, error, attempt }) => {
+      console.log(`❌ Dialog LLM request failed: ${id} - ${error} (attempt ${attempt})`)
+    })
+  }
+
   setStoryConsequenceEngine(engine) {
     this.storyConsequenceEngine = engine
+  }
+
+  // Get queue statistics for monitoring
+  getQueueStats() {
+    return this.llmQueue.getStats()
   }
 
   initializeTemplates() {
@@ -107,9 +141,9 @@ export class DialogGenerator {
       // Build LLM prompt with story DNA and reputation context
       const prompt = await this.buildDNAPrompt(actionType, playerState, storyDNA, playerReputation)
       
-      // Call LLM with creative freedom
-      const response = await this.getMissionGenerator().callLLM({
-        messages: [
+      // Call LLM through queue with high priority for dialog generation
+      const response = await this.llmQueue.enqueue(
+        () => this.getMissionGenerator().callLLMDirect([
           {
             role: "system",
             content: this.getDNASystemPrompt()
@@ -118,8 +152,9 @@ export class DialogGenerator {
             role: "user", 
             content: prompt
           }
-        ]
-      })
+        ]),
+        'high' // High priority for user-facing dialog
+      )
 
       // Parse and validate response
       const dialog = this.parseDialogResponse(response)
@@ -157,19 +192,18 @@ export class DialogGenerator {
       // Build LLM prompt with story DNA and reputation context
       const prompt = await this.buildDNAPrompt(actionType, playerState, storyDNA, playerReputation)
       
-      // Call LLM with streaming enabled
-      const response = await this.getMissionGenerator().callLLM({
-        messages: [
-          {
-            role: "system",
-            content: this.getDNASystemPrompt()
-          },
-          {
-            role: "user", 
-            content: prompt
-          }
-        ]
-      }, 0, {
+      // Call LLM DIRECTLY for streaming (bypass queue to preserve onChunk callback)
+      console.log('🎬 Starting streaming dialog generation (bypassing queue for real-time streaming)');
+      const response = await this.getMissionGenerator().callLLMDirect([
+        {
+          role: "system",
+          content: this.getDNASystemPrompt()
+        },
+        {
+          role: "user", 
+          content: prompt
+        }
+      ], 0, {
         stream: true,
         onChunk: options.onChunk
       })
