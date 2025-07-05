@@ -633,8 +633,31 @@ async function handleExploreDialog() {
       maxFuel: maxFuel.value
     }
 
-    // Start streaming dialog generation
-    await startStreamingDialog('explore', playerState)
+    // Start streaming dialog generation (fallback to regular for now)
+    try {
+      await startStreamingDialog('explore', playerState)
+    } catch (streamError) {
+      console.warn('Streaming failed, falling back to regular dialog:', streamError)
+      // Fallback to regular dialog generation
+      const response = await fetch('http://localhost:3666/api/dialog/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actionType: 'explore',
+          playerState
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      const dialog = await response.json()
+      currentDialog.value = dialog
+      isGeneratingDialog.value = false
+      generationProgress.value = ''
+      addEvent(`> Exploration options generated`, 'success')
+    }
 
   } catch (error) {
     console.error('Explore dialog error:', error)
