@@ -5,9 +5,16 @@ import { StoryDNA } from '../narrative/StoryDNA.js'
 export class DialogGenerator {
   constructor(seed = 'spacepunk-dialog') {
     this.chance = new Chance(seed)
-    this.missionGenerator = new MissionGenerator()
+    this.missionGenerator = null // Create lazily
     this.storyDNA = new StoryDNA(seed)
     this.storyConsequenceEngine = null // Will be injected
+  }
+  
+  getMissionGenerator() {
+    if (!this.missionGenerator) {
+      this.missionGenerator = new MissionGenerator()
+    }
+    return this.missionGenerator
   }
   
   setStoryConsequenceEngine(engine) {
@@ -98,10 +105,10 @@ export class DialogGenerator {
       })
       
       // Build LLM prompt with story DNA and reputation context
-      const prompt = this.buildDNAPrompt(actionType, playerState, storyDNA, playerReputation)
+      const prompt = await this.buildDNAPrompt(actionType, playerState, storyDNA, playerReputation)
       
       // Call LLM with creative freedom
-      const response = await this.missionGenerator.callLLM({
+      const response = await this.getMissionGenerator().callLLM({
         messages: [
           {
             role: "system",
@@ -116,11 +123,14 @@ export class DialogGenerator {
 
       // Parse and validate response
       const dialog = this.parseDialogResponse(response)
-      return this.validateDialog(dialog) ? dialog : this.generateFallbackDialog(actionType, playerState)
+      if (!this.validateDialog(dialog)) {
+        throw new Error('LLM generated invalid dialog format')
+      }
+      return dialog
 
     } catch (error) {
       console.error('Dialog generation failed:', error)
-      return this.generateFallbackDialog(actionType, playerState)
+      throw new Error(`LLM UNAVAILABLE: ${error.message}`)
     }
   }
 
@@ -238,25 +248,106 @@ export class DialogGenerator {
     return context.length > 0 ? context.join('\n') : 'No significant reputation established'
   }
 
-  buildDNAPrompt(actionType, playerState, storyDNA, playerReputation = {}) {
+  assessPlayerRisk(playerState) {
+    const risks = []
+    if (playerState.fuel < 30) risks.push('FUEL CRITICAL')
+    if (playerState.credits < 200) risks.push('FINANCIALLY DESPERATE') 
+    if (playerState.heat > 60) risks.push('HIGH SURVEILLANCE')
+    if (playerState.heat > 80) risks.push('CORPORATE TARGET')
+    return risks.length > 0 ? risks.join(', ') : 'STABLE OPERATIONS'
+  }
+
+  buildLocationContext(location) {
+    const locationProfiles = {
+      'Earth Station Alpha': 'Corporate headquarters - high security, premium services, bureaucratic red tape',
+      'Mars Orbital Beta': 'Industrial hub - rough clientele, black market access, union tensions', 
+      'Europa Mining Gamma': 'Remote outpost - desperate traders, equipment failures, isolation paranoia',
+      'Asteroid Belt Delta': 'Lawless frontier - pirates, salvagers, corporate outcasts',
+      'Titan Refinery Epsilon': 'Energy sector - explosive hazards, worker strikes, environmental dangers'
+    }
+    return locationProfiles[location] || 'Unknown sector - uncertain conditions, unpredictable encounters'
+  }
+
+  async buildDNAPrompt(actionType, playerState, storyDNA, playerReputation = {}) {
     const contextData = `fuel: ${playerState.fuel}, credits: ${playerState.credits}, heat: ${playerState.heat}, location: ${playerState.location}`
     
     // Build reputation context for more personalized encounters
     const reputationContext = this.buildReputationContext(playerReputation)
     
+    // Add risk assessment based on player state
+    const riskProfile = this.assessPlayerRisk(playerState)
+    
+    // Add location-specific context
+    const locationContext = this.buildLocationContext(playerState.location)
+    
+    // Gather rich contextual data for enhanced prompts
+    let enrichedContext = ''
+    let availableDestinations = ''
+    
+    try {
+      if (playerState.shipId) {
+        const crewRepo = new (await import('../repositories/CrewRepository.js')).CrewRepository()
+        const shipRepo = new (await import('../repositories/ShipRepository.js')).ShipRepository()
+        const { query } = await import('../db/index.js')
+        
+        // Get crew social dynamics
+        const crew = await crewRepo.getCrewWithRelationships(playerState.shipId)
+        const crewSummary = this.buildCrewSummary(crew)
+        
+        // Get ship technical state
+        const ship = await shipRepo.findById(playerState.shipId)
+        const shipSummary = this.buildShipSummary(ship)
+        
+        // For travel actions, get real station data from database
+        if (actionType === 'travel') {
+          const stationsResult = await query(`
+            SELECT name, galaxy, sector, station_type, faction, population, 
+                   security_level, trade_volume, docking_fee, fuel_price, 
+                   black_market_activity, corruption_level, description
+            FROM stations 
+            WHERE name != $1 
+            ORDER BY name
+            LIMIT 6
+          `, [playerState.location])
+          
+          const stations = stationsResult.rows
+          availableDestinations = this.buildDestinationContext(stations, playerState)
+        }
+        
+        enrichedContext = `
+CREW DYNAMICS: ${crewSummary}
+SHIP STATUS: ${shipSummary}${availableDestinations}`
+      }
+    } catch (error) {
+      console.warn('Failed to gather enriched context:', error.message)
+      // Fall back to basic context
+    }
+    
     return `You are generating a ${actionType} encounter for a spacepunk logistics game.
 
-PLAYER REPUTATION & HISTORY:
-${reputationContext}
-
+PLAYER RISK PROFILE: ${riskProfile}
+LOCATION CONTEXT: ${locationContext}
 PLAYER STATE: ${contextData}
+REPUTATION: ${reputationContext}${enrichedContext}
 
 ${this.storyDNA.exportDNAForLLM(storyDNA)}
 
-CREATIVE TASK: 
-Using this story DNA, create a unique ${actionType} encounter. Feel free to interpret and combine these narrative elements in unexpected ways. The goal is INFINITE story variety, not rigid templates.
+CREATIVE DIRECTIVE: 
+${actionType === 'travel' ? 
+  `Generate travel destination options with ship AI commentary. For each destination from the AVAILABLE DESTINATIONS data:
+- Create a choice with exact fuel cost from the destination data
+- Add ship AI commentary below each choice based on player's current fuel/credits/heat
+- AI should be snarky/corporate about fuel efficiency, safety, profitability
+- Include docking fees and security warnings in AI commentary
+- Use actual station data (security level, population, station type) in descriptions` :
+  `Generate a unique ${actionType} encounter that directly responds to the player's current situation. 
+- Low fuel = desperate/risky scenarios
+- High heat = paranoia/surveillance themes  
+- Low credits = economic pressure/temptation
+- Player's location should heavily influence the encounter type and characters
+- Use crew dynamics and ship status to create personalized scenarios`}
 
-Create a brief (2-3 sentence) situation and exactly 3 choices. Each choice should naturally emerge from the story DNA while fitting the corporate spacepunk tone.
+Make consequences feel EARNED and CONNECTED to the player's choices and state.
 
 Response must be valid JSON in this exact format:
 {
@@ -275,6 +366,42 @@ Response must be valid JSON in this exact format:
     }
   ]
 }`
+  }
+
+  buildCrewSummary(crew) {
+    if (!crew || crew.length === 0) return 'No crew aboard'
+    
+    return crew.map(member => {
+      const personality = member.dominant_archetype || 'unknown'
+      const skills = `Eng:${member.skill_engineering || 0} Pilot:${member.skill_piloting || 0} Social:${member.skill_social || 0}`
+      const status = `Health:${member.health || 0}% Morale:${member.morale || 0}%`
+      const relationships = member.relationships ? 
+        member.relationships.map(r => `${r.other_name}(${r.relationship_value})`).join(', ') : 'None'
+      
+      return `${member.name} (${personality}): ${skills}, ${status}, Relations: ${relationships}`
+    }).join(' | ')
+  }
+
+  buildShipSummary(ship) {
+    if (!ship) return 'Ship data unavailable'
+    
+    return `${ship.name} (${ship.hull_type}): Location: ${ship.location_station}, Fuel: ${ship.fuel}/${ship.fuel_max}, Cargo: ${ship.cargo_current}/${ship.cargo_max}`
+  }
+
+  buildDestinationContext(stations, playerState) {
+    if (!stations || stations.length === 0) return ''
+    
+    const destinationData = stations.map(station => {
+      // Calculate estimated fuel cost (simple distance approximation)
+      const baseFuelCost = Math.floor(Math.random() * 20) + 15 // 15-35 fuel
+      const canAfford = playerState.fuel >= baseFuelCost
+      
+      return `${station.name} (${station.galaxy}): ${station.station_type} station, Population: ${station.population || 'Unknown'}, Security: ${station.security_level || 50}%, Docking: ${station.docking_fee || 50}CR, Fuel Cost: ${baseFuelCost} (${canAfford ? 'AFFORDABLE' : 'INSUFFICIENT FUEL'}), Description: ${station.description || 'Standard station'}`
+    }).join(' | ')
+    
+    return `
+
+AVAILABLE DESTINATIONS: ${destinationData}`
   }
 
   getDNASystemPrompt() {

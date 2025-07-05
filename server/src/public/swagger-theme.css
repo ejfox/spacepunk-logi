@@ -1,0 +1,256 @@
+/* SPACEPUNK LOGISTICS SIM - CORPORATE SWAGGER UI THEME */
+/* Brutalist/Corporate Dystopian Theme for API Documentation */
+
+:root {
+  --corporate-bg: #1a1a1a;
+  --corporate-text: #00ff00;
+  --corporate-accent: #ff0000;
+  --corporate-border: #333333;
+  --corporate-panel: #2a2a2a;
+  --corporate-warning: #ffaa00;
+}
+
+/* Global brutalist styling */
+body {
+  background-color: var(--corporate-bg) !important;
+  color: var(--corporate-text) !important;
+  font-family: 'Courier New', monospace !important;
+  line-height: 1.2 !important;
+}
+
+/* Swagger UI container */
+.swagger-ui {
+  background-color: var(--corporate-bg) !important;
+  color: var(--corporate-text) !important;
+}
+
+/* Header styling */
+.swagger-ui .info {
+  background-color: var(--corporate-panel) !important;
+  border: 2px solid var(--corporate-border) !important;
+  padding: 20px !important;
+  margin: 20px 0 !important;
+}
+
+.swagger-ui .info .title {
+  color: var(--corporate-accent) !important;
+  font-family: 'Courier New', monospace !important;
+  font-weight: bold !important;
+  text-transform: uppercase !important;
+  letter-spacing: 2px !important;
+}
+
+.swagger-ui .info .title:before {
+  content: "[CORPORATE API DOCUMENTATION] ";
+  color: var(--corporate-warning) !important;
+}
+
+.swagger-ui .info .description {
+  color: var(--corporate-text) !important;
+  font-family: 'Courier New', monospace !important;
+}
+
+/* Operation blocks */
+.swagger-ui .opblock {
+  background-color: var(--corporate-panel) !important;
+  border: 1px solid var(--corporate-border) !important;
+  margin: 10px 0 !important;
+  box-shadow: none !important;
+}
+
+.swagger-ui .opblock .opblock-summary {
+  background-color: var(--corporate-panel) !important;
+  border: none !important;
+  color: var(--corporate-text) !important;
+}
+
+.swagger-ui .opblock .opblock-summary-method {
+  background-color: var(--corporate-accent) !important;
+  color: var(--corporate-bg) !important;
+  font-family: 'Courier New', monospace !important;
+  font-weight: bold !important;
+  text-transform: uppercase !important;
+}
+
+/* GET method */
+.swagger-ui .opblock.opblock-get .opblock-summary-method {
+  background-color: #00aa00 !important;
+}
+
+/* POST method */
+.swagger-ui .opblock.opblock-post .opblock-summary-method {
+  background-color: #0066cc !important;
+}
+
+/* PUT method */
+.swagger-ui .opblock.opblock-put .opblock-summary-method {
+  background-color: #ffaa00 !important;
+}
+
+/* DELETE method */
+.swagger-ui .opblock.opblock-delete .opblock-summary-method {
+  background-color: #cc0000 !important;
+}
+
+/* Brutalist buttons */
+.swagger-ui .btn {
+  background-color: var(--corporate-panel) !important;
+  border: 2px solid var(--corporate-border) !important;
+  color: var(--corporate-text) !important;
+  font-family: 'Courier New', monospace !important;
+  font-weight: bold !important;
+  text-transform: uppercase !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+.swagger-ui .btn:hover {
+  background-color: var(--corporate-accent) !important;
+  color: var(--corporate-bg) !important;
+}
+
+/* Response panels */
+.swagger-ui .responses-inner {
+  background-color: var(--corporate-panel) !important;
+  border: 1px solid var(--corporate-border) !important;
+}
+
+.swagger-ui .response-col_status {
+  color: var(--corporate-text) !important;
+  font-family: 'Courier New', monospace !important;
+}
+
+/* Code blocks */
+.swagger-ui .highlight-code {
+  background-color: var(--corporate-bg) !important;
+  color: var(--corporate-text) !important;
+  font-family: 'Courier New', monospace !important;
+  border: 1px solid var(--corporate-border) !important;
+}
+
+/* Parameters */
+.swagger-ui .parameters-col_description {
+  color: var(--corporate-text) !important;
+  font-family: 'Courier New', monospace !important;
+}
+
+.swagger-ui .parameter__name {
+  color: var(--corporate-accent) !important;
+  font-family: 'Courier New', monospace !important;
+  font-weight: bold !important;
+}
+
+/* Input fields */
+.swagger-ui input[type="text"], 
+.swagger-ui input[type="password"], 
+.swagger-ui input[type="email"], 
+.swagger-ui textarea {
+  background-color: var(--corporate-bg) !important;
+  border: 2px solid var(--corporate-border) !important;
+  color: var(--corporate-text) !important;
+  font-family: 'Courier New', monospace !important;
+  border-radius: 0 !important;
+}
+
+/* Tables */
+.swagger-ui table {
+  background-color: var(--corporate-panel) !important;
+  border: 1px solid var(--corporate-border) !important;
+}
+
+.swagger-ui table thead tr {
+  background-color: var(--corporate-accent) !important;
+  color: var(--corporate-bg) !important;
+}
+
+.swagger-ui table tbody tr {
+  background-color: var(--corporate-panel) !important;
+  color: var(--corporate-text) !important;
+}
+
+/* Models */
+.swagger-ui .model-container {
+  background-color: var(--corporate-panel) !important;
+  border: 1px solid var(--corporate-border) !important;
+}
+
+.swagger-ui .model-title {
+  color: var(--corporate-accent) !important;
+  font-family: 'Courier New', monospace !important;
+  font-weight: bold !important;
+}
+
+/* Corporate header message */
+.swagger-ui .info:before {
+  content: "⚠️ CORPORATE API ACCESS TERMINAL ⚠️";
+  display: block;
+  background-color: var(--corporate-accent);
+  color: var(--corporate-bg);
+  padding: 10px;
+  margin: -20px -20px 20px -20px;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+}
+
+/* Corporate footer */
+.swagger-ui:after {
+  content: "SPACECORP™ CONFIDENTIAL - UNAUTHORIZED ACCESS PROHIBITED";
+  display: block;
+  background-color: var(--corporate-accent);
+  color: var(--corporate-bg);
+  padding: 10px;
+  margin: 20px 0;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  border: 2px solid var(--corporate-border);
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 12px;
+  background-color: var(--corporate-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--corporate-border);
+  border: 1px solid var(--corporate-accent);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--corporate-accent);
+}
+
+/* Links */
+.swagger-ui a {
+  color: var(--corporate-accent) !important;
+  text-decoration: underline !important;
+}
+
+.swagger-ui a:hover {
+  color: var(--corporate-warning) !important;
+}
+
+/* Remove rounded corners everywhere */
+.swagger-ui * {
+  border-radius: 0 !important;
+}
+
+/* Corporate glitch effect (subtle) */
+@keyframes corporate-glitch {
+  0% { transform: translateX(0); }
+  20% { transform: translateX(-1px); }
+  40% { transform: translateX(1px); }
+  60% { transform: translateX(-1px); }
+  80% { transform: translateX(1px); }
+  100% { transform: translateX(0); }
+}
+
+.swagger-ui .info .title {
+  animation: corporate-glitch 10s infinite;
+}

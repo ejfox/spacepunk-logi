@@ -2,6 +2,7 @@ export class LLMConfig {
   constructor() {
     // Check if we should use local LLM
     this.useLocalLLM = process.env.USE_LOCAL_LLM === 'true'
+    console.log(`LLMConfig: USE_LOCAL_LLM=${process.env.USE_LOCAL_LLM}, useLocalLLM=${this.useLocalLLM}`)
     
     if (this.useLocalLLM) {
       this.config = {
