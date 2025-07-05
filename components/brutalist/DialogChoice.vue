@@ -17,18 +17,43 @@
       </div>
       
       <div class="dialog-choices">
-        <div class="choices-header">
-          <span class="header-marker">></span>
-          SELECT RESPONSE:
+        <!-- Loading State -->
+        <div v-if="dialog.isLoading" class="loading-section">
+          <div class="loading-header">
+            <span class="header-marker">></span>
+            GENERATING RESPONSE OPTIONS...
+          </div>
+          
+          <div class="loading-animation">
+            <div class="loading-bar">
+              <div class="loading-progress"></div>
+            </div>
+            <div class="loading-text" v-if="dialog.progressText">
+              {{ dialog.progressText }}
+            </div>
+            <div v-else class="loading-dots">
+              <span>PROCESSING</span>
+              <span class="dot">.</span>
+              <span class="dot">.</span>
+              <span class="dot">.</span>
+            </div>
+          </div>
         </div>
         
-        <div
-          v-for="(choice, index) in dialog.choices"
-          :key="choice.id"
-          class="choice-container"
-          :class="{ 'choice-selected': selectedChoice === choice.id }"
-          @click="selectChoice(choice.id)"
-        >
+        <!-- Normal Choices -->
+        <div v-else>
+          <div class="choices-header">
+            <span class="header-marker">></span>
+            SELECT RESPONSE:
+          </div>
+          
+          <div
+            v-for="(choice, index) in dialog.choices"
+            :key="choice.id"
+            class="choice-container"
+            :class="{ 'choice-selected': selectedChoice === choice.id }"
+            @click="selectChoice(choice.id)"
+          >
           <!-- Choice Header with Risk Level -->
           <div class="choice-header">
             <span class="choice-number">[{{ index + 1 }}]</span>
@@ -63,6 +88,7 @@
             </div>
           </div>
           
+          </div>
         </div>
       </div>
       
@@ -552,5 +578,81 @@ onUnmounted(() => {
 .cancel-button:hover {
   background: #666666;
   color: #000000;
+}
+
+/* Loading Animation Styles */
+.loading-section {
+  padding: 16px;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.loading-header {
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #333333;
+  padding-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.loading-animation {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.loading-bar {
+  width: 100%;
+  height: 4px;
+  background: #222222;
+  border: 1px solid #ffffff;
+  overflow: hidden;
+}
+
+.loading-progress {
+  height: 100%;
+  background: #ffffff;
+  width: 30%;
+  animation: loading-slide 2s ease-in-out infinite;
+}
+
+@keyframes loading-slide {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(233%); }
+  100% { transform: translateX(-100%); }
+}
+
+.loading-text {
+  font-size: 11px;
+  color: #aaaaaa;
+  text-align: center;
+  min-height: 20px;
+}
+
+.loading-dots {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  color: #aaaaaa;
+}
+
+.dot {
+  animation: dot-pulse 1.5s ease-in-out infinite;
+}
+
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+.dot:nth-child(4) { animation-delay: 0.6s; }
+
+@keyframes dot-pulse {
+  0%, 80%, 100% { opacity: 0.3; }
+  40% { opacity: 1; }
 }
 </style>

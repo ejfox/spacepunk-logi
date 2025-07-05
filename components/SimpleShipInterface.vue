@@ -126,6 +126,8 @@ const isProcessing = ref(false)
 const showDialog = ref(false)
 const currentDialog = ref(null)
 const pendingAction = ref(null)
+const isGeneratingDialog = ref(false)
+const generationProgress = ref('')
 
 // Crew management system
 const showCrewManagement = ref(false)
@@ -240,7 +242,7 @@ async function handleAction(actionId) {
           await handleRefuel()
           break
         case 'travel':
-          await handleTravel()
+          await handleTravelDialog()
           break
         case 'wait':
           await handleWait()
@@ -433,44 +435,83 @@ async function handleTrade() {
   }
 }
 
-async function handleTravel() {
-  const fuelCost = 20
-  if (fuel.value >= fuelCost) {
-    fuel.value -= fuelCost
+async function handleTravelDialog() {
+  pendingAction.value = 'travel'
+  isGeneratingDialog.value = true
+  showDialog.value = true
+  
+  // Show loading dialog
+  currentDialog.value = {
+    situation: "🚀 ACCESSING NAVIGATION DATABASE...",
+    choices: [],
+    id: "loading",
+    isLoading: true,
+    progressText: ''
+  }
+  
+  addEvent(`> Querying navigation systems...`, 'info')
+  
+  try {
+    generationProgress.value = 'Analyzing current location and fuel reserves...'
+    currentDialog.value.progressText = generationProgress.value
+    await new Promise(resolve => setTimeout(resolve, 500))
     
-    // Random destination
-    const destinations = [
-      'Earth Station Alpha',
-      'Mars Orbital Beta',
-      'Europa Mining Gamma',
-      'Asteroid Belt Delta',
-      'Titan Refinery Epsilon'
-    ]
+    generationProgress.value = 'Querying galactic station database...'
+    currentDialog.value.progressText = generationProgress.value
+    await new Promise(resolve => setTimeout(resolve, 300))
     
-    const newLocation = destinations[Math.floor(Math.random() * destinations.length)]
-    currentLocation.value = newLocation
+    generationProgress.value = 'Calculating optimal travel routes...'
+    currentDialog.value.progressText = generationProgress.value
+    await new Promise(resolve => setTimeout(resolve, 400))
     
-    // Cool down heat when traveling
-    heatLevel.value = Math.max(0, heatLevel.value - 10)
+    generationProgress.value = 'Generating ship AI recommendations...'
+    currentDialog.value.progressText = generationProgress.value
     
-    addEvent(`> Traveled to ${newLocation}`, 'info')
-    
-    // Random travel event
-    if (Math.random() < 0.3) {
-      const events = [
-        { msg: '> Uneventful journey', type: 'default' },
-        { msg: '> Found floating cargo container', type: 'success', credits: 50 },
-        { msg: '> Engine trouble detected', type: 'warning' },
-        { msg: '> Asteroid field navigation', type: 'info' }
-      ]
-      
-      const event = events[Math.floor(Math.random() * events.length)]
-      addEvent(event.msg, event.type)
-      
-      if (event.credits) {
-        credits.value += event.credits
-      }
+    // Generate LLM travel dialog with ship AI commentary
+    const playerState = {
+      playerId: props.playerId,
+      shipId: props.shipId, 
+      fuel: fuel.value,
+      credits: credits.value,
+      heat: heatLevel.value,
+      location: currentLocation.value,
+      maxFuel: maxFuel.value
     }
+
+    const response = await fetch('http://localhost:3666/api/dialog/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        actionType: 'travel',
+        playerState
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+
+    const dialog = await response.json()
+    currentDialog.value = dialog
+    isGeneratingDialog.value = false
+    generationProgress.value = ''
+    addEvent(`> Navigation options generated`, 'success')
+
+  } catch (error) {
+    console.error('Travel dialog error:', error)
+    currentDialog.value = {
+      situation: "🚨 NAVIGATION SYSTEM UNAVAILABLE 🚨",
+      choices: [{
+        id: "nav_error",
+        text: `ERROR: ${error.message}`,
+        risk: "critical",
+        consequences: { narrative: "Start LM Studio on port 1234 for dynamic travel generation" }
+      }],
+      id: "nav-error"
+    }
+    isGeneratingDialog.value = false
+    generationProgress.value = ''
+    addEvent(`> Navigation system offline`, 'danger')
   }
 }
 
