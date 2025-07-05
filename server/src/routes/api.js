@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import crypto from 'crypto';
 import { PlayerRepository } from '../repositories/PlayerRepository.js';
@@ -17,6 +20,7 @@ import { DollhouseMarket } from '../markets/DollhouseMarket.js';
 import { MarketIntelligence } from '../markets/MarketIntelligence.js';
 import { PoliticalHierarchy } from '../politics/PoliticalHierarchy.js';
 import { StoryConsequenceEngine } from '../narrative/StoryConsequenceEngine.js';
+import { gameRandom } from '../utils/seededRandom.js';
 
 const router = express.Router();
 const playerRepo = new PlayerRepository();
@@ -221,6 +225,347 @@ router.get('/ship/:shipId/crew', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch crew data' });
   }
 });
+
+// LLM Crew Generation Endpoints
+router.post('/api/crew/generate-name', async (req, res) => {
+  try {
+    const { context = 'spacepunk_corporate_dystopia', cultural_background = 'corporate', seed } = req.body;
+    
+    const prompt = `Generate a single crew member name for a cynical corporate space logistics game.
+
+IMPORTANT: Return ONLY the name. No other text, no JSON, just the plain name.
+
+Cultural context: ${cultural_background}
+Corporate dystopian setting: Spacepunk universe
+
+Generate a name appropriate for: ${cultural_background} background in a corporate space environment.
+
+Requirements:
+- First and last name only
+- Appropriate for the cultural background
+- Sounds like someone who would work for a terrible space logistics company
+- Not overly exotic or sci-fi - these are working people
+
+Examples:
+- Chen Martinez (corporate/mixed)
+- Sarah Johnson (corporate)
+- Yuki Tanaka (asian corporate)
+- Marcus Thompson (corporate)
+
+Generate name:`;
+
+    const result = await contentGenerator.callLLM(prompt);
+    if (result && result.trim()) {
+      res.json({ name: result.trim() });
+    } else {
+      // Fallback to chance.js generation
+      const firstName = gameRandom.chance.first();
+      const lastName = gameRandom.chance.last();
+      res.json({ name: `${firstName} ${lastName}` });
+    }
+  } catch (error) {
+    console.error('Error generating crew name:', error);
+    // Fallback to chance.js
+    const firstName = gameRandom.chance.first();
+    const lastName = gameRandom.chance.last();
+    res.json({ name: `${firstName} ${lastName}` });
+  }
+});
+
+router.post('/api/crew/generate-employment-note', async (req, res) => {
+  try {
+    const { crewMember, context = 'spacepunk_corporate_dystopia' } = req.body;
+    
+    const prompt = `Generate a brief employment note for this crew member in a cynical corporate space logistics company.
+
+IMPORTANT: Return ONLY the employment note text. No quotes, no JSON, just the plain text.
+
+Crew Member: ${crewMember?.name || 'Crew Member'}
+Background: ${crewMember?.cultural_background || 'corporate'}
+Experience: ${crewMember?.experience || 'moderate'}
+
+Corporate setting: Terrible space logistics company with bureaucratic dysfunction
+
+Generate a 1-2 sentence employment note that sounds like:
+- Corporate HR documentation
+- Slightly passive-aggressive or bureaucratic
+- References their background or skills
+- Has corporate dystopian humor
+
+Examples:
+- "Previously employed at Galactic Shipping Solutions until the incident with the coffee machine. Shows proficiency in heavy machinery operation."
+- "Transferred from accounting division after demonstrating unexpected competence with reactor maintenance. Claims to enjoy the work."
+- "Self-employed contractor with extensive experience in 'creative problem solving.' Background check pending."
+
+Generate employment note:`;
+
+    const result = await contentGenerator.callLLM(prompt);
+    if (result && result.trim()) {
+      res.json({ note: result.trim() });
+    } else {
+      // Fallback employment notes
+      const fallbackNotes = [
+        "Previously employed at competing logistics firm until 'restructuring.' References available upon request.",
+        "Self-trained in essential ship operations. Claims to work well under pressure and tight deadlines.",
+        "Transferred from administrative role after showing aptitude for technical problem-solving. Adapts quickly.",
+        "Contract worker with solid reputation in the outer systems. Prefers practical solutions to complex problems."
+      ];
+      res.json({ note: gameRandom.chance.pickone(fallbackNotes) });
+    }
+  } catch (error) {
+    console.error('Error generating employment note:', error);
+    const fallbackNote = "Available for immediate assignment. Standard corporate background verification completed.";
+    res.json({ note: fallbackNote });
+  }
+});
+
+router.post('/api/crew/generate-candidate', async (req, res) => {
+  try {
+    const { context = 'spacepunk_corporate_dystopia', seed } = req.body;
+    
+    // Use seed for consistent generation
+    if (seed) {
+      gameRandom.setSeed(seed);
+    }
+    
+    // Generate basic stats with chance.js
+    const culturalBackgrounds = ['corporate', 'agricultural', 'mining', 'research', 'military', 'freelance'];
+    const cultural_background = gameRandom.chance.pickone(culturalBackgrounds);
+    
+    const baseStats = {
+      health: gameRandom.chance.integer({ min: 70, max: 100 }),
+      morale: gameRandom.chance.integer({ min: 60, max: 90 }),
+      stress: gameRandom.chance.integer({ min: 10, max: 40 }),
+      experience: gameRandom.chance.integer({ min: 20, max: 80 }),
+      cost: gameRandom.chance.integer({ min: 1500, max: 4500 })
+    };
+    
+    // Generate LLM-powered narrative elements
+    const prompt = `Generate a complete crew candidate for a cynical corporate space logistics game.
+
+IMPORTANT: Return ONLY a JSON object. No other text.
+
+Cultural background: ${cultural_background}
+Health: ${baseStats.health}%
+Morale: ${baseStats.morale}%  
+Stress: ${baseStats.stress}%
+Experience: ${baseStats.experience}%
+Hiring cost: ${baseStats.cost} credits
+
+Required JSON format:
+{
+  "name": "First Last",
+  "employment_note": "Brief corporate HR-style note about their background",
+  "personality_summary": "1-2 sentence personality description with corporate dystopian humor"
+}
+
+Focus on:
+- Realistic names appropriate for ${cultural_background} background
+- Corporate bureaucratic tone for employment notes
+- Cynical humor in personality descriptions
+- Make them feel like real people working for a terrible space company
+
+Example:
+{
+  "name": "Maria Santos", 
+  "employment_note": "Former quality assurance specialist at Titan Industries until the 'productivity optimization.' Shows initiative with equipment troubleshooting.",
+  "personality_summary": "Quietly competent with a dry sense of humor about corporate policies. Prefers fixing things to attending mandatory team-building exercises."
+}
+
+Generate candidate:`;
+
+    const llmResult = await contentGenerator.callLLM(prompt);
+    let candidate = baseStats;
+    
+    if (llmResult) {
+      try {
+        const parsed = JSON.parse(llmResult);
+        candidate = {
+          ...baseStats,
+          ...parsed,
+          cultural_background,
+          id: `candidate-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+        };
+      } catch (parseError) {
+        console.error('Failed to parse LLM candidate response:', parseError);
+        // Fall through to fallback generation
+      }
+    }
+    
+    // Fallback generation if LLM fails
+    if (!candidate.name) {
+      const firstName = gameRandom.chance.first();
+      const lastName = gameRandom.chance.last();
+      candidate.name = `${firstName} ${lastName}`;
+    }
+    
+    if (!candidate.employment_note) {
+      const fallbackNotes = [
+        "Recently completed corporate training program. Demonstrates adequate competency in standard operating procedures.",
+        "Transferred from different division after budget restructuring. Familiar with regulatory compliance requirements.",
+        "Contract employee with acceptable performance ratings. Available for immediate deployment to active vessel.",
+        "Self-directed learner with practical experience in multi-system operations. References available upon request."
+      ];
+      candidate.employment_note = gameRandom.chance.pickone(fallbackNotes);
+    }
+    
+    if (!candidate.personality_summary) {
+      candidate.personality_summary = "Maintains professional demeanor while adapting to changing operational requirements. Prefers practical solutions to bureaucratic procedures.";
+    }
+    
+    res.json(candidate);
+  } catch (error) {
+    console.error('Error generating crew candidate:', error);
+    res.status(500).json({ error: 'Failed to generate crew candidate' });
+  }
+});
+
+// Generate initial crew relationships using existing infrastructure
+router.post('/api/crew/generate-relationships', async (req, res) => {
+  try {
+    const { shipId, seed } = req.body;
+    
+    if (!shipId) {
+      return res.status(400).json({ error: 'Ship ID required' });
+    }
+    
+    // Use seed for consistent generation
+    if (seed) {
+      gameRandom.setSeed(seed);
+    }
+    
+    // Get current crew with existing relationships
+    const crewWithRelationships = await crewRepo.getCrewWithRelationships(shipId);
+    
+    if (crewWithRelationships.length < 2) {
+      return res.json({ message: 'Need at least 2 crew members to generate relationships' });
+    }
+    
+    const generatedRelationships = [];
+    
+    // Generate relationships between crew pairs who don't already have them
+    for (let i = 0; i < crewWithRelationships.length; i++) {
+      for (let j = i + 1; j < crewWithRelationships.length; j++) {
+        const crew1 = crewWithRelationships[i];
+        const crew2 = crewWithRelationships[j];
+        
+        // Check if relationship already exists
+        const existingRelation = await crewRepo.getRelationships(crew1.id);
+        const hasRelation = existingRelation.some(r => r.other_crew_member_id === crew2.id);
+        
+        if (hasRelation) continue;
+        
+        // Calculate compatibility based on existing archetype system
+        const culturalCompatibility = crew1.culture === crew2.culture ? 15 : 0;
+        const archetypeCompatibility = calculateArchetypeCompatibility(crew1, crew2);
+        const personalityCompatibility = calculatePersonalityCompatibility(crew1, crew2);
+        
+        const baseRelationship = gameRandom.chance.integer({ min: -30, max: 60 });
+        const finalRelationship = Math.max(-100, Math.min(100, 
+          baseRelationship + culturalCompatibility + archetypeCompatibility + personalityCompatibility
+        ));
+        
+        // Use existing updateRelationship method
+        await crewRepo.updateRelationship(crew1.id, crew2.id, finalRelationship);
+        await crewRepo.updateRelationship(crew2.id, crew1.id, finalRelationship);
+        
+        // Generate backstory using LLM and add as memories
+        const backstoryPrompt = `Generate a crew relationship backstory for a cynical corporate space logistics game.
+
+IMPORTANT: Return ONLY the backstory text. No JSON, no other formatting.
+
+Crew Member 1: ${crew1.name} (${crew1.culture}, ${crew1.dominant_archetype})
+Crew Member 2: ${crew2.name} (${crew2.culture}, ${crew2.dominant_archetype})
+Relationship Score: ${finalRelationship}/100
+
+Generate a 1-2 sentence backstory explaining their history together, appropriate for a corporate space logistics setting. Focus on previous jobs, stations visited, or shared experiences in the shipping industry.
+
+Examples:
+- "Both worked graveyard shifts at the same orbital freight depot, bonding over terrible coffee and worse management."
+- "Met during a cargo emergency at Titan Station - Chen's quick thinking saved Martinez's career review."
+- "Previously assigned to competing logistics firms, developed mutual respect through professional rivalry."
+
+Generate backstory:`;
+
+        const backstory = await contentGenerator.callLLM(backstoryPrompt) || 
+          "Met during previous assignment. Maintain professional working relationship.";
+        
+        // Add relationship memories to both crew members
+        await crewRepo.addMemory(
+          crew1.id,
+          'relationship_formed',
+          `Relationship established with ${crew2.name}: ${backstory.trim()}`,
+          Math.round(finalRelationship / 10),
+          crew2.id,
+          'crew_member'
+        );
+        
+        await crewRepo.addMemory(
+          crew2.id,
+          'relationship_formed',
+          `Relationship established with ${crew1.name}: ${backstory.trim()}`,
+          Math.round(finalRelationship / 10),
+          crew1.id,
+          'crew_member'
+        );
+        
+        generatedRelationships.push({
+          crew1: crew1.name,
+          crew2: crew2.name,
+          relationship_value: finalRelationship,
+          backstory: backstory.trim()
+        });
+      }
+    }
+    
+    res.json({ 
+      message: `Generated ${generatedRelationships.length} new relationships`,
+      relationships: generatedRelationships 
+    });
+  } catch (error) {
+    console.error('Error generating crew relationships:', error);
+    res.status(500).json({ error: 'Failed to generate crew relationships' });
+  }
+});
+
+// Helper functions for relationship compatibility
+function calculateArchetypeCompatibility(crew1, crew2) {
+  // Archetype compatibility matrix - some archetypes work better together
+  const compatibilityMatrix = {
+    'innocent': { 'caregiver': 10, 'sage': 8, 'outlaw': -5 },
+    'sage': { 'innocent': 8, 'explorer': 10, 'jester': -3 },
+    'explorer': { 'outlaw': 12, 'hero': 8, 'ruler': -8 },
+    'outlaw': { 'explorer': 12, 'magician': 10, 'ruler': -15 },
+    'magician': { 'outlaw': 10, 'creator': 15, 'orphan': 5 },
+    'hero': { 'caregiver': 8, 'explorer': 8, 'lover': 5 },
+    'lover': { 'caregiver': 12, 'jester': 8, 'ruler': 3 },
+    'jester': { 'lover': 8, 'orphan': 10, 'sage': -3 },
+    'caregiver': { 'innocent': 10, 'lover': 12, 'hero': 8 },
+    'creator': { 'magician': 15, 'explorer': 5, 'ruler': -5 },
+    'ruler': { 'hero': 3, 'creator': -5, 'outlaw': -15 },
+    'orphan': { 'caregiver': 8, 'jester': 10, 'magician': 5 }
+  };
+  
+  const arch1 = crew1.dominant_archetype;
+  const arch2 = crew2.dominant_archetype;
+  
+  return compatibilityMatrix[arch1]?.[arch2] || 0;
+}
+
+function calculatePersonalityCompatibility(crew1, crew2) {
+  // Jung personality compatibility
+  let compatibility = 0;
+  
+  // Extroversion compatibility
+  const extrovertDiff = Math.abs(crew1.trait_extroversion - crew2.trait_extroversion);
+  compatibility += extrovertDiff < 20 ? 5 : extrovertDiff > 60 ? -3 : 0;
+  
+  // Thinking vs Feeling compatibility
+  const thinkingDiff = Math.abs(crew1.trait_thinking - crew2.trait_thinking);
+  compatibility += thinkingDiff < 30 ? 3 : 0;
+  
+  return compatibility;
+}
 
 // Debug endpoint to check resources
 router.get('/debug/resources', async (req, res) => {
@@ -1090,11 +1435,8 @@ router.post('/dialog/generate', async (req, res) => {
   } catch (error) {
     console.error('Error generating dialog:', error);
     res.status(500).json({ 
-      error: 'Failed to generate dialog',
-      fallback: dialogGenerator.generateFallbackDialog(
-        req.body.actionType, 
-        req.body.playerState
-      )
+      error: `LLM UNAVAILABLE: ${error.message}`,
+      message: 'Start your local LLM server (LM Studio) on port 1234 to generate dynamic content'
     });
   }
 });
