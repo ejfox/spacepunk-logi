@@ -228,10 +228,18 @@ async function handleAction(actionId) {
   if (isProcessing.value) return
   
   // Check if this action should trigger a dialog
-  const dialogActions = ['explore', 'spy', 'trade']
+  const streamingActions = ['explore', 'travel']
+  const dialogActions = ['spy', 'trade']
   
-  if (dialogActions.includes(actionId)) {
-    // Generate dialog for complex actions
+  if (streamingActions.includes(actionId)) {
+    // Use streaming dialog for enhanced actions
+    if (actionId === 'explore') {
+      await handleExploreDialog()
+    } else if (actionId === 'travel') {
+      await handleTravelDialog()
+    }
+  } else if (dialogActions.includes(actionId)) {
+    // Generate dialog for complex actions (non-streaming)
     await generateDialog(actionId)
   } else {
     // Execute simple actions directly
@@ -310,7 +318,7 @@ async function executeDirectAction(actionId) {
   // Fallback to original simple actions
   switch (actionId) {
     case 'explore':
-      await handleExplore()
+      await handleExploreDialog()
       break
     case 'spy':
       await handleSpy()
@@ -586,27 +594,63 @@ async function startStreamingDialog(actionType, playerState) {
   }
 }
 
-async function handleExplore() {
-  const fuelCost = 10
-  if (fuel.value >= fuelCost) {
-    fuel.value -= fuelCost
+async function handleExploreDialog() {
+  pendingAction.value = 'explore'
+  isGeneratingDialog.value = true
+  showDialog.value = true
+  
+  // Show loading dialog
+  currentDialog.value = {
+    situation: "🔍 SCANNING LOCAL AREA...",
+    choices: [],
+    id: "loading",
+    isLoading: true,
+    progressText: ''
+  }
+  
+  addEvent(`> Initiating exploration protocols...`, 'info')
+  
+  try {
+    generationProgress.value = 'Analyzing sensor readings...'
+    currentDialog.value.progressText = generationProgress.value
+    await new Promise(resolve => setTimeout(resolve, 400))
     
-    // Random exploration outcomes
-    const outcomes = [
-      { msg: '> Found nothing of interest', type: 'default' },
-      { msg: '> Discovered abandoned cargo: +100 CR', type: 'success', credits: 100 },
-      { msg: '> Found encrypted data chip: +150 CR', type: 'success', credits: 150 },
-      { msg: '> Encountered security patrol', type: 'warning', heat: 15 },
-      { msg: '> Stumbled into corporate facility', type: 'danger', heat: 25 },
-      { msg: '> Located fuel cache: +15 fuel', type: 'success', fuel: 15 }
-    ]
+    generationProgress.value = 'Checking for anomalies and opportunities...'
+    currentDialog.value.progressText = generationProgress.value
+    await new Promise(resolve => setTimeout(resolve, 300))
     
-    const outcome = outcomes[Math.floor(Math.random() * outcomes.length)]
-    addEvent(outcome.msg, outcome.type)
+    generationProgress.value = 'Generating exploration options...'
+    currentDialog.value.progressText = generationProgress.value
     
-    if (outcome.credits) credits.value += outcome.credits
-    if (outcome.heat) heatLevel.value = Math.min(100, heatLevel.value + outcome.heat)
-    if (outcome.fuel) fuel.value = Math.min(maxFuel.value, fuel.value + outcome.fuel)
+    // Prepare for streaming
+    const playerState = {
+      playerId: props.playerId,
+      shipId: props.shipId, 
+      fuel: fuel.value,
+      credits: credits.value,
+      heat: heatLevel.value,
+      location: currentLocation.value,
+      maxFuel: maxFuel.value
+    }
+
+    // Start streaming dialog generation
+    await startStreamingDialog('explore', playerState)
+
+  } catch (error) {
+    console.error('Explore dialog error:', error)
+    currentDialog.value = {
+      situation: "🚨 SENSOR ARRAY MALFUNCTION 🚨",
+      choices: [{
+        id: "explore_error",
+        text: `ERROR: ${error.message}`,
+        risk: "critical",
+        consequences: { narrative: "Start LM Studio on port 1234 for dynamic exploration content" }
+      }],
+      id: "explore-error"
+    }
+    isGeneratingDialog.value = false
+    generationProgress.value = ''
+    addEvent(`> Exploration systems offline`, 'danger')
   }
 }
 
