@@ -1,50 +1,58 @@
 <template>
-  <div class="simple-ship-interface">
-    <!-- Ship Status Display -->
-    <StatusDisplay
-      title="SHIP STATUS"
-      :subtitle="`TICK: ${currentTick}`"
-      :items="shipStatusItems"
-    >
-      <span v-if="heatLevel >= 75" class="heat-warning">⚠ CORPORATE ATTENTION HIGH</span>
-    </StatusDisplay>
+  <div ref="mainInterfaceRef" class="h-screen bg-black text-white font-mono p-4 grid grid-rows-[60px_1fr_120px] gap-4">
+    <!-- TOP HUD BAR -->
+    <div class="grid grid-cols-4 gap-4 text-sm">
+      <div class="border border-white p-2 bg-gray-900">
+        <div class="text-green-400">FUEL: {{ fuel }}/{{ maxFuel }}</div>
+        <div class="text-yellow-400">CREDITS: {{ credits }}</div>
+      </div>
+      <div class="border border-white p-2 bg-gray-900">
+        <div class="text-blue-400">LOCATION: {{ currentLocation }}</div>
+        <div class="text-gray-400">TICK: {{ currentTick }}</div>
+      </div>
+      <div class="border border-white p-2 bg-gray-900">
+        <div :class="heatLevel > 50 ? 'text-red-400' : 'text-green-400'">
+          HEAT: {{ getHeatDisplay(heatLevel) }}
+        </div>
+        <div class="text-gray-400">SEC: {{ getSecurityLevel() }}</div>
+      </div>
+      <div class="border border-white p-2 bg-gray-900">
+        <div :class="wsStatus === 'OPEN' ? 'text-green-400' : 'text-red-400'">
+          CONN: {{ connectionStatus }}
+        </div>
+        <div class="text-gray-400">FPS: {{ Math.round(fps) }}</div>
+      </div>
+    </div>
 
-    <!-- Action Grid -->
-    <ActionGrid
-      title="SHIP ACTIONS"
-      subtitle="SELECT OPERATION"
-      :actions="availableActions"
-      :columns="3"
-      @action="handleAction"
-    >
-      Use number keys 1-7 or click to execute commands
-    </ActionGrid>
+    <!-- MAIN GAME AREA -->
+    <div class="grid grid-cols-[1fr_300px] gap-4">
+      <!-- Game Log -->
+      <EventLog
+        title="OPERATIONAL LOG"
+        :events="events"
+        :max-events="20"
+        @clear="clearLog"
+      />
+      
+      <!-- Actions -->
+      <ActionGrid
+        title="ACTIONS"
+        :actions="availableActions"
+        :columns="2"
+        @action="handleActionWithSync"
+        @hover-action="handleActionHover"
+        @clear-hover="clearHelpText"
+      />
+    </div>
 
-    <!-- Event Log -->
-    <EventLog
-      title="SHIP'S LOG"
-      :events="events"
-      :max-events="25"
-      @clear="clearLog"
-    />
-
-    <!-- Location Info -->
-    <StatusDisplay
-      title="LOCATION STATUS"
-      :subtitle="currentLocation"
-      :items="locationStatusItems"
-    />
-
-    <!-- Reputation & Cascading Effects -->
-    <StatusDisplay
-      title="REPUTATION MATRIX"
-      subtitle="CASCADING EFFECT TRACKING"
-      :items="reputationStatusItems"
-    >
-      <span v-if="playerChoiceHistory.length > 0" class="choice-history">
-        RECENT: {{ playerChoiceHistory.slice(-3).map(c => c.choice.toUpperCase()).join(' → ') }}
-      </span>
-    </StatusDisplay>
+    <!-- BOTTOM STATUS BAR -->
+    <div class="border border-white p-3 bg-gray-950">
+      <div class="text-green-400 text-xs mb-1">> SYSTEM STATUS</div>
+      <div class="text-sm">
+        <div v-if="currentHelpText" class="text-white">{{ currentHelpText }}</div>
+        <div v-else class="text-gray-400">Ready for operations. Use hotkeys [1-7] or click actions.</div>
+      </div>
+    </div>
 
     <!-- Dialog System -->
     <DialogChoice
@@ -62,16 +70,25 @@
       @crew-hired="handleCrewHired"
       @crew-assigned="handleCrewAssigned"
     />
+
+    <!-- Performance Monitor -->
+    <PerformanceMonitor 
+      :fps="fps"
+      :quality-mode="gameQuality"
+      :ws-status="wsStatus"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, watchEffect } from 'vue'
+import { useWebSocket, useMagicKeys, useElementVisibility, useFps, useIntervalFn } from '@vueuse/core'
 import StatusDisplay from './brutalist/StatusDisplay.vue'
 import ActionGrid from './brutalist/ActionGrid.vue'
 import EventLog from './brutalist/EventLog.vue'
 import DialogChoice from './brutalist/DialogChoice.vue'
 import CrewManagement from './brutalist/CrewManagement.vue'
+import PerformanceMonitor from './brutalist/PerformanceMonitor.vue'
 
 // Props
 const props = defineProps({
@@ -83,6 +100,13 @@ const props = defineProps({
 const fuel = ref(100)
 const maxFuel = ref(100)
 const credits = ref(1000)
+
+// Player reputation system
+const playerReputation = ref({
+  corporate_standing: 50,
+  underground_connections: 30,
+  equipment_reliability: 75
+})
 
 // Safeguard: Reset credits if they become NaN
 function ensureValidCredits() {
@@ -97,13 +121,6 @@ const currentTick = ref(1)
 const events = ref([])
 const isProcessing = ref(false)
 
-// CASCADING CHOICE TRACKING for consequence system
-const playerChoiceHistory = ref([])
-const playerReputation = ref({
-  corporate_standing: 50,
-  underground_connections: 50,
-  equipment_reliability: 100
-})
 
 // Dialog system
 const showDialog = ref(false)
@@ -113,94 +130,31 @@ const pendingAction = ref(null)
 // Crew management system
 const showCrewManagement = ref(false)
 
+// Help text system
+const currentHelpText = ref('')
+
 // Computed properties
 const shipStatusItems = computed(() => [
-  {
-    key: 'FUEL',
-    value: `${fuel.value}/${maxFuel.value}`,
-    class: fuel.value < 25 ? 'warning' : fuel.value < 10 ? 'danger' : 'default'
-  },
-  {
-    key: 'CREDITS',
-    value: `${credits.value} CR`,
-    class: credits.value < 100 ? 'warning' : 'default'
-  },
-  {
-    key: 'HEAT',
-    value: getHeatDisplay(heatLevel.value),
-    class: heatLevel.value > 75 ? 'danger' : heatLevel.value > 50 ? 'warning' : 'default'
-  }
+  { key: 'CONNECTION', value: connectionStatus.value, class: wsStatus.value === 'OPEN' ? 'success' : 'danger' },
+  { key: 'FUEL', value: `${fuel.value}/${maxFuel.value}`, class: fuel.value < 25 ? 'warning' : 'default' },
+  { key: 'CREDITS', value: `${credits.value} CR`, class: credits.value < 100 ? 'warning' : 'default' },
+  { key: 'HEAT', value: getHeatDisplay(heatLevel.value), class: heatLevel.value > 50 ? 'warning' : 'default' }
 ])
 
 const locationStatusItems = computed(() => [
-  {
-    key: 'STATION',
-    value: currentLocation.value
-  },
-  {
-    key: 'FUEL PRICE',
-    value: `${getFuelPrice()} CR/unit`
-  },
-  {
-    key: 'SECURITY',
-    value: getSecurityLevel()
-  }
+  { key: 'STATION', value: currentLocation.value },
+  { key: 'FUEL PRICE', value: `${getFuelPrice()} CR/unit` },
+  { key: 'SECURITY', value: getSecurityLevel() }
 ])
 
 const availableActions = computed(() => [
-  {
-    id: 'refuel',
-    key: '1',
-    label: 'REFUEL',
-    cost: `${getFuelPrice()} CR`,
-    disabled: isProcessing.value || credits.value < getFuelPrice() || fuel.value >= maxFuel.value,
-    variant: fuel.value < 25 ? 'warning' : 'default'
-  },
-  {
-    id: 'trade',
-    key: '2',
-    label: 'TRADE',
-    disabled: isProcessing.value,
-    variant: 'primary'
-  },
-  {
-    id: 'travel',
-    key: '3',
-    label: 'TRAVEL',
-    cost: '20 FUEL',
-    disabled: isProcessing.value || fuel.value < 20,
-    variant: 'default'
-  },
-  {
-    id: 'explore',
-    key: '4',
-    label: 'EXPLORE',
-    cost: '10 FUEL',
-    disabled: isProcessing.value || fuel.value < 10,
-    variant: 'primary'
-  },
-  {
-    id: 'spy',
-    key: '5',
-    label: 'SPY',
-    cost: '+HEAT',
-    disabled: isProcessing.value,
-    variant: 'danger'
-  },
-  {
-    id: 'wait',
-    key: '6',
-    label: 'WAIT',
-    disabled: isProcessing.value,
-    variant: 'default'
-  },
-  {
-    id: 'crew',
-    key: '7',
-    label: 'CREW',
-    disabled: isProcessing.value,
-    variant: 'primary'
-  }
+  { id: 'refuel', key: '1', label: 'REFUEL', cost: `${getFuelPrice()} CR`, disabled: isProcessing.value || credits.value < getFuelPrice() || fuel.value >= maxFuel.value, variant: fuel.value < 25 ? 'warning' : 'default' },
+  { id: 'trade', key: '2', label: 'TRADE', disabled: isProcessing.value, variant: 'primary' },
+  { id: 'travel', key: '3', label: 'TRAVEL', cost: '20 FUEL', disabled: isProcessing.value || fuel.value < 20, variant: 'default' },
+  { id: 'explore', key: '4', label: 'EXPLORE', cost: '10 FUEL', disabled: isProcessing.value || fuel.value < 10, variant: 'primary' },
+  { id: 'spy', key: '5', label: 'SPY', cost: '+HEAT', disabled: isProcessing.value, variant: 'danger' },
+  { id: 'wait', key: '6', label: 'WAIT', disabled: isProcessing.value, variant: 'default' },
+  { id: 'crew', key: '7', label: '★ CREW ★', disabled: isProcessing.value, variant: 'primary' }
 ])
 
 // Helper functions
@@ -243,6 +197,27 @@ function addEvent(message, type = 'default') {
   // Keep only last 50 events
   if (events.value.length > 50) {
     events.value = events.value.slice(0, 50)
+  }
+}
+
+// Help text handlers
+function updateHelpText(text) {
+  currentHelpText.value = text
+}
+
+function clearHelpText() {
+  currentHelpText.value = ''
+}
+
+function handleActionHover(action) {
+  if (action.tooltip?.description) {
+    updateHelpText(`${action.tooltip.title || action.label}: ${action.tooltip.description}`)
+  } else {
+    updateHelpText(`${action.label}: ${action.id === 'explore' ? 'Initiate deep space reconnaissance mission' : 
+                   action.id === 'trade' ? 'Access interstellar commerce protocols' : 
+                   action.id === 'refuel' ? 'Replenish deuterium fuel reserves' : 
+                   action.id === 'wait' ? 'Enter standby mode and wait for next opportunity' : 
+                   'Execute authorized operation'}`)
   }
 }
 
@@ -297,9 +272,7 @@ async function generateDialog(actionId) {
           fuel: fuel.value,
           credits: credits.value,
           heat: heatLevel.value,
-          location: currentLocation.value,
-          previous_choices: playerChoiceHistory.value.slice(-5), // Last 5 choices for cascading effects
-          reputation: playerReputation.value
+          location: currentLocation.value
         }
       })
     })
@@ -309,14 +282,23 @@ async function generateDialog(actionId) {
       currentDialog.value = dialog
       showDialog.value = true
     } else {
-      // Fallback to direct action
-      addEvent(`> ${actionId.toUpperCase()} failed: Dialog system offline`, 'warning')
-      await executeDirectAction(actionId)
+      const error = await response.json()
+      throw new Error(error.message || error.error || 'LLM service unavailable')
     }
   } catch (error) {
     console.error('Dialog generation failed:', error)
-    // Silently fall back to direct action without showing error
-    await executeDirectAction(actionId)
+    // Show big error overlay
+    currentDialog.value = {
+      situation: "🚨 LLM SERVICE UNAVAILABLE 🚨",
+      choices: [{
+        id: "llm_error",
+        text: `ERROR: ${error.message}`,
+        risk: "critical",
+        consequences: { narrative: "Start LM Studio on port 1234 for dynamic content generation" }
+      }],
+      id: "llm-error"
+    }
+    showDialog.value = true
   } finally {
     isProcessing.value = false
   }
@@ -341,18 +323,6 @@ function handleDialogChoice(choiceData) {
   const choice = choiceData.choice
   const actionId = pendingAction.value
   
-  // TRACK CHOICE for cascading effects
-  playerChoiceHistory.value.push({
-    action: actionId,
-    choice: choice.id,
-    timestamp: Date.now(),
-    risk: choice.risk
-  })
-  
-  // Keep only last 10 choices for performance
-  if (playerChoiceHistory.value.length > 10) {
-    playerChoiceHistory.value = playerChoiceHistory.value.slice(-10)
-  }
   
   // Apply consequences from dialog choice
   if (choice.consequences) {
@@ -615,7 +585,6 @@ function applyCascadingEffect(cascadeEffect) {
     case 'equipment_status':
       addEvent(`> EQUIPMENT STATUS: ${value}`, 'warning')
       if (value.includes('failures')) {
-        playerReputation.value.equipment_reliability -= 20
       }
       break
     case 'intel_discovered':
@@ -649,125 +618,182 @@ function updateReputation(choiceId, risk) {
 }
 
 // REPUTATION DISPLAY in status
-const reputationStatusItems = computed(() => [
-  {
-    key: 'CORP STANDING',
-    value: `${playerReputation.value.corporate_standing}%`,
-    class: playerReputation.value.corporate_standing > 70 ? 'success' : playerReputation.value.corporate_standing < 30 ? 'danger' : 'default'
-  },
-  {
-    key: 'UNDERGROUND',
-    value: `${playerReputation.value.underground_connections}%`,
-    class: playerReputation.value.underground_connections > 70 ? 'success' : 'default'
-  },
-  {
-    key: 'EQUIPMENT',
-    value: `${playerReputation.value.equipment_reliability}%`,
-    class: playerReputation.value.equipment_reliability > 80 ? 'success' : playerReputation.value.equipment_reliability < 50 ? 'danger' : 'warning'
-  }
-])
 
-// Keyboard shortcuts
-function handleKeyPress(event) {
+// Enhanced action handling with WebSocket integration
+async function handleActionWithSync(actionId) {
   if (isProcessing.value) return
   
-  // Don't interfere with copy/paste or other modifier key combinations
-  if (event.metaKey || event.ctrlKey || event.altKey) return
-  
-  const key = event.key
-  const actionMap = {
-    '1': 'refuel',
-    '2': 'trade', 
-    '3': 'travel',
-    '4': 'explore',
-    '5': 'spy',
-    '6': 'wait',
-    '7': 'crew'
+  // Send action to server if connected
+  if (wsStatus.value === 'OPEN') {
+    wsSend(JSON.stringify({
+      type: 'player_action',
+      action: actionId,
+      playerId: props.playerId,
+      timestamp: Date.now()
+    }))
   }
   
-  if (actionMap[key]) {
-    event.preventDefault()
-    handleAction(actionMap[key])
-  }
+  // Continue with local action handling
+  await handleAction(actionId)
 }
+
+// WebSocket connection for real-time updates
+const { status: wsStatus, data: wsData, send: wsSend } = useWebSocket('ws://localhost:3666', {
+  autoReconnect: {
+    retries: 10,
+    delay: 2000,
+    onFailed() {
+      addEvent('> CONNECTION LOST: Switching to emergency protocols', 'danger')
+    }
+  },
+  heartbeat: {
+    message: JSON.stringify({ type: 'ping', playerId: props.playerId }),
+    interval: 30000
+  },
+  onConnected() {
+    addEvent('> QUANTUM LINK ESTABLISHED: Real-time sync active', 'success')
+  },
+  onDisconnected() {
+    addEvent('> QUANTUM LINK SEVERED: Operating on local cache', 'warning')
+  }
+})
+
+// Magic Keys for enhanced keyboard shortcuts
+const keys = useMagicKeys()
+const { Escape, Shift } = keys
+
+// Enhanced keyboard handling
+watchEffect(() => {
+  if (keys['1'].value && !isProcessing.value) handleAction('refuel')
+  if (keys['2'].value && !isProcessing.value) handleAction('trade')
+  if (keys['3'].value && !isProcessing.value) handleAction('travel')
+  if (keys['4'].value && !isProcessing.value) handleAction('explore')
+  if (keys['5'].value && !isProcessing.value) handleAction('spy')
+  if (keys['6'].value && !isProcessing.value) handleAction('wait')
+  if (keys['7'].value && !isProcessing.value) handleAction('crew')
+})
+
+// Emergency shortcuts
+watchEffect(() => {
+  if (Shift.value && Escape.value) {
+    addEvent('> EMERGENCY OVERRIDE ACTIVATED', 'danger')
+    // Emergency stop all operations
+    isProcessing.value = false
+    showDialog.value = false
+    showCrewManagement.value = false
+  }
+})
+
+// Performance monitoring
+const fps = useFps()
+const gameQuality = computed(() => {
+  if (fps.value > 50) return 'optimal'
+  if (fps.value > 30) return 'standard'
+  return 'conservation'
+})
+
+// Element visibility for performance optimization
+const mainInterfaceRef = ref()
+const isMainVisible = useElementVisibility(mainInterfaceRef)
+
+// UI animations and local timers
+const { pause: pauseAnimations, resume: resumeAnimations, isActive: animationsActive } = useIntervalFn(() => {
+  // Blink status indicators
+  if (heatLevel.value > 75) {
+    // High heat blinking handled by CSS animate-pulse already
+  }
+  
+  // Update local progress indicators
+  // This runs between server ticks for smooth UI
+}, 500) // 2fps for subtle animations
+
+const { pause: pauseHeartbeat, resume: resumeHeartbeat } = useIntervalFn(() => {
+  // Local heartbeat for UI responsiveness indicators
+  if (wsStatus.value === 'OPEN') {
+    // Connection good, maybe pulse a green indicator
+  } else {
+    // Connection issues, flash warning
+  }
+}, 2000)
+
+// WebSocket data handling
+watch(wsData, (newData) => {
+  if (!newData) return
+  
+  try {
+    const gameUpdate = JSON.parse(newData)
+    
+    switch (gameUpdate.type) {
+      case 'tick_update':
+        currentTick.value = gameUpdate.tick
+        if (gameUpdate.fuel !== undefined) fuel.value = gameUpdate.fuel
+        if (gameUpdate.credits !== undefined) {
+          ensureValidCredits()
+          credits.value = gameUpdate.credits
+        }
+        if (gameUpdate.heat !== undefined) heatLevel.value = gameUpdate.heat
+        if (gameUpdate.location) currentLocation.value = gameUpdate.location
+        addEvent(`> TICK ${gameUpdate.tick}: Systems synchronized`, 'info')
+        break
+        
+      case 'event':
+        addEvent(`> ${gameUpdate.message}`, gameUpdate.eventType || 'info')
+        break
+        
+      case 'crew_update':
+        // Handle crew status updates
+        addEvent(`> CREW STATUS: ${gameUpdate.summary}`, 'info')
+        break
+        
+      case 'market_update':
+        addEvent(`> MARKET FLUX: ${gameUpdate.summary}`, 'info')
+        break
+        
+      case 'system_alert':
+        addEvent(`> SYSTEM ALERT: ${gameUpdate.message}`, 'warning')
+        break
+    }
+  } catch (error) {
+    console.error('Failed to parse WebSocket data:', error)
+  }
+})
+
+// Performance-based quality adjustments
+watch(gameQuality, (quality) => {
+  if (quality === 'conservation') {
+    addEvent('> PERFORMANCE MODE: Conservation protocols active', 'warning')
+    pauseAnimations()
+  } else if (quality === 'optimal' && !animationsActive.value) {
+    addEvent('> PERFORMANCE MODE: Full visual fidelity restored', 'success')
+    resumeAnimations()
+  }
+})
+
+// Pause animations when interface not visible
+watch(isMainVisible, (visible) => {
+  if (visible && gameQuality.value !== 'conservation') {
+    resumeAnimations()
+    resumeHeartbeat()
+  } else {
+    pauseAnimations()
+    pauseHeartbeat()
+  }
+})
+
+// Connection status in ship status
+const connectionStatus = computed(() => {
+  switch (wsStatus.value) {
+    case 'CONNECTING': return 'ESTABLISHING LINK...'
+    case 'OPEN': return 'QUANTUM SYNC ACTIVE'
+    case 'CLOSED': return 'OFFLINE MODE'
+    default: return 'CONNECTION ERROR'
+  }
+})
 
 // Lifecycle
 onMounted(() => {
-  window.addEventListener('keypress', handleKeyPress)
   addEvent('> Ship systems online', 'success')
   addEvent('> Welcome aboard, Captain', 'info')
-  
-  // Simulate tick updates
-  setInterval(() => {
-    currentTick.value++
-  }, 10000)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('keypress', handleKeyPress)
+  addEvent(`> Performance monitor: ${gameQuality.value.toUpperCase()} mode`, 'info')
 })
 </script>
-
-<style scoped>
-.simple-ship-interface {
-  display: grid;
-  grid-template-columns: 300px 1fr 300px;
-  grid-template-rows: auto auto 1fr auto;
-  gap: 12px;
-  padding: 12px;
-  font-family: 'Courier New', monospace;
-  background: #000000;
-  color: #ffffff;
-  min-height: 100vh;
-}
-
-/* Ship Status Display */
-.simple-ship-interface > :first-child {
-  grid-column: 1;
-  grid-row: 1;
-}
-
-/* Action Grid */
-.simple-ship-interface > :nth-child(2) {
-  grid-column: 3;
-  grid-row: 1 / 3;
-}
-
-/* EventLog - THE STAR OF THE SHOW */
-.simple-ship-interface > :nth-child(3) {
-  grid-column: 1 / 3;
-  grid-row: 3;
-  min-height: 400px;
-}
-
-/* Location Status */
-.simple-ship-interface > :nth-child(4) {
-  grid-column: 1;
-  grid-row: 2;
-}
-
-/* Reputation Matrix */
-.simple-ship-interface > :nth-child(5) {
-  grid-column: 2;
-  grid-row: 1 / 3;
-  max-width: 100%;
-}
-
-.heat-warning {
-  color: #ff0000;
-  font-weight: bold;
-  animation: blink 1s infinite;
-}
-
-@keyframes blink {
-  50% { opacity: 0.5; }
-}
-
-.choice-history {
-  color: #00ff00;
-  font-size: 0.8em;
-  font-weight: bold;
-  margin-top: 4px;
-  display: block;
-}
-</style>
