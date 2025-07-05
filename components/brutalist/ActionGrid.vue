@@ -1,31 +1,39 @@
 <template>
-  <div class="action-grid">
-    <div class="action-header">
-      <span class="action-title">{{ title }}</span>
-      <span v-if="subtitle" class="action-subtitle">{{ subtitle }}</span>
+  <div ref="actionGridRef" class="border-2 border-white bg-gray-900 font-mono text-white shadow-lg">
+    <div class="border-b-2 border-white px-4 py-3 bg-black flex justify-between items-center">
+      <span class="font-bold text-base tracking-wider uppercase">{{ title }}</span>
+      <span v-if="subtitle" class="text-sm opacity-70 font-mono tracking-wide">{{ subtitle }}</span>
     </div>
-    <div class="action-buttons" :class="`grid-${columns}`">
+    <div class="p-4 grid gap-3" :class="getGridClasses(columns)">
       <button
         v-for="action in actions"
         :key="action.id"
-        class="action-button"
-        :class="[action.variant || 'default', { disabled: action.disabled }]"
+        class="border-2 border-white bg-black text-white px-3 py-4 cursor-pointer font-mono text-sm text-center relative transition-all duration-200 min-h-20 flex flex-col justify-center items-center gap-2 hover:bg-gray-800 hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-gray-800"
+        :class="getButtonClasses(action.variant, action.disabled)"
         :disabled="action.disabled"
         @click="$emit('action', action.id)"
+        @mouseenter="$emit('hover-action', action)"
+        @mouseleave="$emit('clear-hover')"
       >
-        <span class="action-key" v-if="action.key">[{{ action.key }}]</span>
-        <span class="action-label">{{ action.label }}</span>
-        <span class="action-cost" v-if="action.cost">{{ action.cost }}</span>
+        <span v-if="action.key" class="text-xs opacity-70 tracking-wider">[{{ action.key }}]</span>
+        <span class="font-bold text-sm tracking-wider">{{ action.label }}</span>
+        <span v-if="action.cost" class="text-xs opacity-70 italic tracking-wide">{{ action.cost }}</span>
       </button>
     </div>
-    <div v-if="$slots.default" class="action-footer">
+    <div v-if="$slots.default" class="border-t border-dotted border-gray-600 px-4 py-3 text-xs opacity-70 text-center bg-gray-950 leading-relaxed">
       <slot></slot>
     </div>
   </div>
 </template>
 
 <script setup>
-defineEmits(['action'])
+import { ref } from 'vue'
+import { useElementVisibility } from '@vueuse/core'
+
+defineEmits(['action', 'hover-action', 'clear-hover'])
+
+const actionGridRef = ref(null)
+const isVisible = useElementVisibility(actionGridRef)
 
 defineProps({
   title: {
@@ -53,118 +61,29 @@ defineProps({
     validator: (value) => [1, 2, 3, 4, 6].includes(value)
   }
 })
+
+function getGridClasses(columns) {
+  const gridMap = {
+    1: 'grid-cols-1',
+    2: 'grid-cols-2', 
+    3: 'grid-cols-3',
+    4: 'grid-cols-4',
+    6: 'grid-cols-6'
+  }
+  return gridMap[columns] || 'grid-cols-3'
+}
+
+function getButtonClasses(variant, disabled) {
+  if (disabled) return []
+  
+  const classes = []
+  if (variant === 'primary') {
+    classes.push('!bg-green-950', '!border-green-400', '!text-green-400', 'hover:!bg-green-900', 'hover:!shadow-green-400/20')
+  } else if (variant === 'warning') {
+    classes.push('!bg-yellow-950', '!border-yellow-400', '!text-yellow-400', 'hover:!bg-yellow-900', 'hover:!shadow-yellow-400/20')
+  } else if (variant === 'danger') {
+    classes.push('!bg-red-950', '!border-red-400', '!text-red-400', 'hover:!bg-red-900', 'hover:!shadow-red-400/20')
+  }
+  return classes
+}
 </script>
-
-<style scoped>
-.action-grid {
-  border: 1px solid #ffffff;
-  background: #111111;
-  font-family: 'Courier New', monospace;
-  color: #ffffff;
-}
-
-.action-header {
-  border-bottom: 1px solid #ffffff;
-  padding: 4px 8px;
-  background: #000000;
-}
-
-.action-title {
-  font-weight: bold;
-  font-size: 12px;
-}
-
-.action-subtitle {
-  float: right;
-  font-size: 10px;
-  opacity: 0.7;
-}
-
-.action-buttons {
-  padding: 8px;
-  display: grid;
-  gap: 4px;
-}
-
-.grid-1 { grid-template-columns: 1fr; }
-.grid-2 { grid-template-columns: repeat(2, 1fr); }
-.grid-3 { grid-template-columns: repeat(3, 1fr); }
-.grid-4 { grid-template-columns: repeat(4, 1fr); }
-.grid-6 { grid-template-columns: repeat(6, 1fr); }
-
-.action-button {
-  background: #000000;
-  border: 1px solid #ffffff;
-  color: #ffffff;
-  padding: 8px 4px;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 10px;
-  text-align: center;
-  position: relative;
-}
-
-.action-button:hover:not(.disabled) {
-  background: #222222;
-}
-
-.action-button.disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  color: #666666;
-  border-color: #666666;
-}
-
-.action-button.primary {
-  background: #004400;
-  border-color: #00ff00;
-}
-
-.action-button.primary:hover:not(.disabled) {
-  background: #006600;
-}
-
-.action-button.warning {
-  background: #444400;
-  border-color: #ffff00;
-}
-
-.action-button.warning:hover:not(.disabled) {
-  background: #666600;
-}
-
-.action-button.danger {
-  background: #440000;
-  border-color: #ff0000;
-}
-
-.action-button.danger:hover:not(.disabled) {
-  background: #660000;
-}
-
-.action-key {
-  font-size: 8px;
-  opacity: 0.7;
-  display: block;
-}
-
-.action-label {
-  font-weight: bold;
-  display: block;
-  margin: 2px 0;
-}
-
-.action-cost {
-  font-size: 8px;
-  opacity: 0.7;
-  display: block;
-}
-
-.action-footer {
-  border-top: 1px dotted #333333;
-  padding: 4px 8px;
-  font-size: 9px;
-  opacity: 0.7;
-  text-align: center;
-}
-</style>

@@ -134,6 +134,79 @@ export class DialogGenerator {
     }
   }
 
+  async generateStreamingDialog(actionType, playerState, options = {}) {
+    try {
+      // Get player's reputation and active modifiers to influence story generation
+      let playerReputation = {}
+      let activeModifiers = []
+      if (this.storyConsequenceEngine && playerState.playerId) {
+        playerReputation = this.storyConsequenceEngine.getPlayerReputation(playerState.playerId)
+        activeModifiers = this.storyConsequenceEngine.getActiveModifiers(
+          playerState.playerId, 
+          Math.floor(Date.now() / 30000)
+        )
+      }
+      
+      // Generate unique story DNA influenced by player's history
+      const storyDNA = this.storyDNA.generateStoryDNA({
+        ...playerState,
+        reputation: playerReputation,
+        modifiers: activeModifiers
+      })
+      
+      // Build LLM prompt with story DNA and reputation context
+      const prompt = await this.buildDNAPrompt(actionType, playerState, storyDNA, playerReputation)
+      
+      // Call LLM with streaming enabled
+      const response = await this.getMissionGenerator().callLLM({
+        messages: [
+          {
+            role: "system",
+            content: this.getDNASystemPrompt()
+          },
+          {
+            role: "user", 
+            content: prompt
+          }
+        ]
+      }, 0, {
+        stream: true,
+        onChunk: options.onChunk
+      })
+
+      return response
+
+    } catch (error) {
+      console.error('Streaming dialog generation failed:', error)
+      throw new Error(`LLM UNAVAILABLE: ${error.message}`)
+    }
+  }
+
+  parsePartialDialog(partialContent) {
+    // Try to extract valid JSON even from incomplete content
+    const jsonMatch = partialContent.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        // Try to parse the JSON, might be incomplete
+        const parsed = JSON.parse(jsonMatch[0]);
+        return {
+          situation: parsed.situation || '',
+          choices: parsed.choices || []
+        };
+      } catch (error) {
+        // If JSON is incomplete, try to extract what we can
+        const situationMatch = partialContent.match(/"situation":\s*"([^"]*)"/)
+        if (situationMatch) {
+          return {
+            situation: situationMatch[1],
+            choices: []
+          };
+        }
+      }
+    }
+    return null;
+  }
+
   selectRelevantTropes(actionType, playerState) {
     const relevantTropes = []
     

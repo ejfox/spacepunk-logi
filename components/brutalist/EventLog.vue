@@ -1,5 +1,5 @@
 <template>
-  <div class="event-log">
+  <div ref="eventLogRef" class="event-log">
     <div class="log-header">
       <span class="log-title">{{ title }}</span>
       <span v-if="showCount" class="log-count">[{{ events.length }}]</span>
@@ -26,6 +26,7 @@
 
 <script setup>
 import { computed, nextTick, watch, ref } from 'vue'
+import { useElementVisibility, useIntervalFn } from '@vueuse/core'
 
 const emit = defineEmits(['clear'])
 
@@ -65,6 +66,30 @@ const props = defineProps({
 })
 
 const logContent = ref(null)
+const eventLogRef = ref(null)
+
+// Visibility optimization
+const isVisible = useElementVisibility(eventLogRef)
+
+// Auto-scroll animation only when visible
+const { pause: pauseScrollAnimation, resume: resumeScrollAnimation } = useIntervalFn(() => {
+  // Smooth scroll behavior when new events come in
+  if (logContent.value && isVisible.value) {
+    const shouldScroll = logContent.value.scrollTop >= logContent.value.scrollHeight - logContent.value.clientHeight - 100
+    if (shouldScroll) {
+      logContent.value.scrollTop = logContent.value.scrollHeight
+    }
+  }
+}, 100)
+
+// Pause animations when not visible
+watch(isVisible, (visible) => {
+  if (visible) {
+    resumeScrollAnimation()
+  } else {
+    pauseScrollAnimation()
+  }
+})
 
 const displayEvents = computed(() => {
   return props.events.slice(-props.maxEvents)

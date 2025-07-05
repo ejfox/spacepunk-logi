@@ -1,0 +1,3870 @@
+openapi: 3.0.3
+info:
+  title: Spacepunk Logistics Sim API
+  description: |
+    ## Corporate Space Logistics Management System™ v2.3.1
+    
+    **Welcome to the Spacepunk Logistics Sim API** - your gateway to the finest in corporate space bureaucracy and logistics management!
+    
+    This API powers a cynical corporate space logistics simulation where players manage terrible space trucking companies, hire dysfunctional crews, and navigate bureaucratic nightmares across the galaxy. Features include:
+    
+    - **Crew Management**: Hire, train, and manage crew members with deep personalities and relationships
+    - **Ship Operations**: Manage vessels, fuel, cargo, and ship systems
+    - **Market Trading**: Buy/sell resources across stations with dynamic pricing
+    - **Mission System**: Accept and complete procedurally generated missions
+    - **Political Intrigue**: Influence politicians and trigger market events
+    - **Training Queue**: Offline skill development with real-time progression
+    - **Narrative Generation**: LLM-powered ship's logs and story content
+    - **Progressive UI**: Software license system that unlocks interface complexity
+    - **Permadeath System**: Crew memory persistence across captain deaths
+    
+    **Corporate Disclaimer**: This API is provided "as-is" with zero warranty. Side effects may include existential dread, bureaucratic nightmares, and an overwhelming desire to file digital paperwork. SpaceCorp™ is not responsible for any psychological damage caused by prolonged exposure to corporate dystopian humor.
+    
+    **Technical Notes**: 
+    - All timestamps use ISO 8601 format
+    - UUIDs are used for primary keys  
+    - Game operates on a 30-second tick system
+    - LLM-generated content may be queued for rate limiting
+    - WebSocket connections available for real-time updates
+    
+  version: 2.3.1
+  contact:
+    name: SpaceCorp™ Technical Support
+    email: support@spacecorp.invalid
+    url: https://github.com/spacepunk-logi
+  license:
+    name: SpaceCorp™ Enterprise License
+    url: https://spacecorp.invalid/license
+    
+servers:
+  - url: http://localhost:3666
+    description: Local Development Server
+  - url: https://api.spacepunk-logi.com
+    description: Production API Server
+    
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+  
+tags:
+  - name: Players
+    description: Player account management and authentication
+  - name: Ships
+    description: Ship operations, status, and management
+  - name: Crew
+    description: Crew hiring, management, and relationships
+  - name: Training
+    description: Skill development and training queues
+  - name: Market
+    description: Resource trading and market data
+  - name: Missions
+    description: Mission system and job board
+  - name: Narrative
+    description: Ship logs, stories, and LLM-generated content
+  - name: Politics
+    description: Political influence and corruption systems
+  - name: Intelligence
+    description: Market intelligence and insider trading
+  - name: Content Generation
+    description: Procedural content generation endpoints
+  - name: God Mode
+    description: Administrative dashboard and world management
+  - name: Debug
+    description: Development and debugging endpoints
+
+paths:
+  # PLAYER MANAGEMENT
+  /player/create:
+    post:
+      tags: [Players]
+      summary: Create new player account
+      description: |
+        Initialize a new captain profile with starting ship and crew pool.
+        
+        **Corporate Process**: New employee onboarding includes mandatory username registration, 
+        email verification, and password hash generation. Starting vessel and crew pool 
+        automatically provisioned per company policy.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password]
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                  example: "captain_torres"
+                email:
+                  type: string
+                  format: email
+                  example: "torres@spacecorp.invalid"
+                password:
+                  type: string
+                  minLength: 6
+                  example: "password123"
+      responses:
+        '200':
+          description: Player created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  player:
+                    $ref: '#/components/schemas/Player'
+                  ship:
+                    $ref: '#/components/schemas/Ship'
+                  message:
+                    type: string
+                    example: "Captain profile initialized successfully"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /player/{playerId}:
+    get:
+      tags: [Players]
+      summary: Get player profile
+      description: Retrieve captain profile including license status and credits
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        '200':
+          description: Player profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Player'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /player/{playerId}/license/purchase:
+    post:
+      tags: [Players]
+      summary: Purchase software license upgrade
+      description: |
+        Upgrade ship management software license to unlock additional interface features.
+        
+        **License Tiers:**
+        - BASIC (Free): 3 buttons, minimal functionality
+        - STANDARD (5,000 credits): Additional tabs and features
+        - PROFESSIONAL (25,000 credits): Full interface complexity
+        
+        **Corporate Notice**: By purchasing this license, you agree to mandatory telemetry 
+        reporting, algorithmic performance reviews, and waiver of software-related grievances.
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [newLicense]
+              properties:
+                newLicense:
+                  type: string
+                  enum: [STANDARD, PROFESSIONAL]
+                  example: "STANDARD"
+      responses:
+        '200':
+          description: License upgraded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Software license upgraded successfully"
+                  player:
+                    $ref: '#/components/schemas/Player'
+                  licenseInfo:
+                    type: object
+                    properties:
+                      newLicense:
+                        type: string
+                        example: "STANDARD"
+                      creditsRemaining:
+                        type: integer
+                        example: 15000
+                      agreementText:
+                        type: string
+                        example: "SpaceCorp™ Software License Agreement v2.0 - By purchasing this license..."
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '402':
+          description: Insufficient credits
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /player/{playerId}/credits:
+    post:
+      tags: [Players]
+      summary: Update player credits
+      description: Add or deduct credits from player account (for trading/mission rewards)
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount]
+              properties:
+                amount:
+                  type: integer
+                  description: Credit amount (positive to add, negative to deduct)
+                  example: 5000
+                reason:
+                  type: string
+                  example: "Mission completion bonus"
+      responses:
+        '200':
+          description: Credits updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Credits added successfully"
+                  player:
+                    $ref: '#/components/schemas/Player'
+                  transaction:
+                    type: object
+                    properties:
+                      amount:
+                        type: integer
+                        example: 5000
+                      reason:
+                        type: string
+                        example: "Mission completion bonus"
+                      newBalance:
+                        type: integer
+                        example: 25000
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /player/{playerId}/generate-log:
+    post:
+      tags: [Narrative]
+      summary: Generate ship's log for player login
+      description: |
+        Generate an LLM-powered narrative summary of what happened during player absence.
+        
+        **Corporate Function**: Automated reporting system generates comprehensive activity summaries 
+        for captain review. Includes crew activities, training progress, and notable incidents.
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ship's log generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Ship's log entry generated successfully"
+                  logEntry:
+                    $ref: '#/components/schemas/ShipLog'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /player/{playerId}/logs:
+    get:
+      tags: [Narrative]
+      summary: Get player's ship logs
+      description: Retrieve chronological ship log entries for player
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+          example: 20
+      responses:
+        '200':
+          description: Ship logs retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShipLog'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /player/{playerId}/missions:
+    get:
+      tags: [Missions]
+      summary: Get player's missions
+      description: Retrieve missions assigned to player
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [available, accepted, completed, failed, expired]
+          example: "accepted"
+      responses:
+        '200':
+          description: Player missions retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Mission'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /player/{playerId}/consequences:
+    get:
+      tags: [Narrative]
+      summary: Get player's choice consequences and reputation
+      description: Retrieve player's decision history and current reputation status
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Consequence history retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  consequence_history:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Consequence'
+                  reputation:
+                    $ref: '#/components/schemas/Reputation'
+                  active_modifiers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Modifier'
+                  total_choices:
+                    type: integer
+                    example: 47
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # SHIP MANAGEMENT
+  /ship/{shipId}/status:
+    get:
+      tags: [Ships]
+      summary: Get ship status
+      description: |
+        Retrieve comprehensive ship status including crew, fuel, cargo, and systems.
+        
+        **Corporate Status Report**: Automated vessel monitoring provides real-time operational 
+        parameters including fuel reserves, cargo utilization, and crew efficiency metrics.
+      parameters:
+        - name: shipId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        '200':
+          description: Ship status retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Ship'
+                  - type: object
+                    properties:
+                      system_status:
+                        type: string
+                        example: "All systems operating within acceptable parameters"
+                      fuel_narrative:
+                        type: string
+                        example: "Fuel reserves adequate for standard operations"
+                      operational_summary:
+                        type: string
+                        example: "Vessel maintains operational readiness per corporate standards"
+                      corporate_overview:
+                        type: string
+                        example: "Ship status report: All systems nominal"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /ship/{shipId}/crew:
+    get:
+      tags: [Crew]
+      summary: Get ship crew
+      description: List all crew members assigned to ship
+      parameters:
+        - name: shipId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Ship crew retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CrewMember'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /ship/{shipId}/logs:
+    get:
+      tags: [Narrative]
+      summary: Get ship's logs
+      description: Retrieve chronological log entries for specific ship
+      parameters:
+        - name: shipId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Ship logs retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShipLog'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /ship/{shipId}/training:
+    get:
+      tags: [Training]
+      summary: Get ship training queue
+      description: Retrieve active training sessions for all crew on ship
+      parameters:
+        - name: shipId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Training queue retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  shipId:
+                    type: string
+                    format: uuid
+                    example: "123e4567-e89b-12d3-a456-426614174000"
+                  activeTraining:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TrainingSession'
+                  totalSessions:
+                    type: integer
+                    example: 3
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # CREW MANAGEMENT
+  /crew/available:
+    get:
+      tags: [Crew]
+      summary: Get available crew for hiring
+      description: |
+        Retrieve crew members available for hire with corporate summaries.
+        
+        **HR Department Notice**: Available personnel have completed mandatory background checks 
+        and psychological evaluations. Corporate hiring memos included for management review.
+      responses:
+        '200':
+          description: Available crew retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                    - $ref: '#/components/schemas/CrewMember'
+                    - type: object
+                      properties:
+                        corporate_summary:
+                          type: string
+                          example: "Reliable employee with acceptable performance metrics"
+                        hiring_memo:
+                          type: string
+                          example: "Personnel File ABC123: Suitable for immediate deployment"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /crew/{crewId}:
+    get:
+      tags: [Crew]
+      summary: Get crew member details
+      description: Retrieve detailed information about specific crew member
+      parameters:
+        - name: crewId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Crew member details retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CrewMember'
+                  - type: object
+                    properties:
+                      corporate_summary:
+                        type: string
+                        example: "Employee demonstrates satisfactory performance"
+                      personnel_evaluation:
+                        type: string
+                        example: "Employee Chen Martinez: Meets company standards"
+                      status_report:
+                        type: string
+                        example: "Current assignment status: Active"
+                      performance_notes:
+                        type: string
+                        example: "Compliance rating: Satisfactory"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /crew/{crewId}/hire:
+    post:
+      tags: [Crew]
+      summary: Hire crew member
+      description: |
+        Assign available crew member to ship.
+        
+        **Corporate Procedure**: Complete employment paperwork and assign to vessel. 
+        Hiring record automatically generated for HR compliance.
+      parameters:
+        - name: crewId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [shipId]
+              properties:
+                shipId:
+                  type: string
+                  format: uuid
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        '200':
+          description: Crew member hired successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Crew member hired successfully"
+                  crewMember:
+                    $ref: '#/components/schemas/CrewMember'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  # TRAINING SYSTEM
+  /crew/{crewId}/training/start:
+    post:
+      tags: [Training]
+      summary: Start crew training
+      description: |
+        Begin skill development training for crew member.
+        
+        **Training Department**: Automated skill enhancement programs available for all personnel. 
+        Training continues during captain absence with regular progress reports.
+      parameters:
+        - name: crewId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [trainingType]
+              properties:
+                trainingType:
+                  type: string
+                  enum: [engineering, piloting, social, combat, hacking, lockpicking, biohacking]
+                  example: "engineering"
+                customDuration:
+                  type: integer
+                  description: Training duration in hours (optional)
+                  minimum: 1
+                  maximum: 168
+                  example: 24
+      responses:
+        '200':
+          description: Training started successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Training started successfully"
+                  session:
+                    $ref: '#/components/schemas/TrainingSession'
+                  trainingInfo:
+                    type: object
+                    properties:
+                      intensity:
+                        type: string
+                        example: "standard"
+                      skillImprovement:
+                        type: integer
+                        example: 15
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /crew/{crewId}/training/cancel:
+    post:
+      tags: [Training]
+      summary: Cancel crew training
+      description: Terminate active training session for crew member
+      parameters:
+        - name: crewId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  default: "Cancelled by captain"
+                  example: "Emergency assignment required"
+      responses:
+        '200':
+          description: Training cancelled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Training cancelled successfully"
+                  session:
+                    $ref: '#/components/schemas/TrainingSession'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /crew/{crewId}/training/status:
+    get:
+      tags: [Training]
+      summary: Get training status
+      description: Check current training progress for crew member
+      parameters:
+        - name: crewId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Training status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hasActiveTraining:
+                    type: boolean
+                    example: true
+                  training:
+                    allOf:
+                      - $ref: '#/components/schemas/TrainingSession'
+                      - type: object
+                        properties:
+                          progress_narrative:
+                            type: string
+                            example: "Employee demonstrates satisfactory progress in skill development"
+                          corporate_update:
+                            type: string
+                            example: "Training Department: Skill enhancement proceeding nominally"
+                          status_memo:
+                            type: string
+                            example: "Skill development program in progress. Current efficiency: 67%"
+                  corporate_status:
+                    type: string
+                    example: "No active training sessions assigned to employee"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /crew/{crewId}/training/available:
+    get:
+      tags: [Training]
+      summary: Get available training options
+      description: List training programs available for crew member based on current skills
+      parameters:
+        - name: crewId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Available training options retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  crewMember:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      name:
+                        type: string
+                        example: "Chen Martinez"
+                      skills:
+                        type: object
+                        properties:
+                          engineering:
+                            type: integer
+                            example: 45
+                          piloting:
+                            type: integer
+                            example: 32
+                          social:
+                            type: integer
+                            example: 28
+                          combat:
+                            type: integer
+                            example: 15
+                  availableTraining:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TrainingOption'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /crew/{crewId}/training/history:
+    get:
+      tags: [Training]
+      summary: Get training history
+      description: Retrieve completed training sessions for crew member
+      parameters:
+        - name: crewId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+      responses:
+        '200':
+          description: Training history retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TrainingSession'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /crew/{crewId}/training/recommendations:
+    get:
+      tags: [Training]
+      summary: Get training recommendations
+      description: Get AI-powered training recommendations based on crew member performance
+      parameters:
+        - name: crewId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Training recommendations retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recommendations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TrainingRecommendation'
+                  priority_skills:
+                    type: array
+                    items:
+                      type: string
+                    example: ["engineering", "social"]
+                  rationale:
+                    type: string
+                    example: "Based on current skill gaps and ship requirements"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  # MARKET SYSTEM
+  /market/data:
+    get:
+      tags: [Market]
+      summary: Get market data
+      description: |
+        Retrieve current market prices and resource availability for station.
+        
+        **Trade Advisory**: Market data includes current pricing, supply/demand metrics, 
+        and corporate analysis. Price trends updated every market tick.
+      parameters:
+        - name: stationId
+          in: query
+          schema:
+            type: string
+            default: "earth-station-alpha"
+          example: "mars-trade-depot"
+      responses:
+        '200':
+          description: Market data retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                    - $ref: '#/components/schemas/MarketData'
+                    - type: object
+                      properties:
+                        market_analysis:
+                          type: string
+                          example: "Moderate demand for industrial components"
+                        corporate_memo:
+                          type: string
+                          example: "Trade Advisory: Market conditions favorable for bulk purchase"
+                        sector_report:
+                          type: string
+                          example: "Industrial: Market conditions challenging"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /market/trends/{stationId}/{resourceId}:
+    get:
+      tags: [Market]
+      summary: Get market trends
+      description: Historical price trends for specific resource at station
+      parameters:
+        - name: stationId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "mars-trade-depot"
+        - name: resourceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: hours
+          in: query
+          schema:
+            type: integer
+            default: 24
+            minimum: 1
+            maximum: 168
+          example: 48
+      responses:
+        '200':
+          description: Market trends retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  trends:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MarketTrend'
+                  summary:
+                    type: object
+                    properties:
+                      avgPrice:
+                        type: number
+                        example: 142.5
+                      priceChange:
+                        type: number
+                        example: 5.2
+                      volatility:
+                        type: string
+                        example: "moderate"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /market/dollhouse:
+    get:
+      tags: [Market]
+      summary: Get Dollhouse Market snapshot
+      description: |
+        Real-time market data from the Dollhouse Market simulation system.
+        
+        **Market Intelligence**: Advanced trading system with dynamic pricing, 
+        supply/demand modeling, and insider trading opportunities.
+      responses:
+        '200':
+          description: Market snapshot retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketSnapshot'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /market/trade:
+    post:
+      tags: [Market]
+      summary: Execute market trade
+      description: |
+        Execute buy or sell order for resources.
+        
+        **Trade Execution**: Automated order processing with real-time market impact. 
+        All transactions logged for regulatory compliance.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [resourceId, side, volume, playerId, stationId]
+              properties:
+                resourceId:
+                  type: string
+                  format: uuid
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+                side:
+                  type: string
+                  enum: [buy, sell]
+                  example: "buy"
+                volume:
+                  type: integer
+                  minimum: 1
+                  example: 100
+                playerId:
+                  type: string
+                  format: uuid
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+                stationId:
+                  type: string
+                  example: "mars-trade-depot"
+      responses:
+        '200':
+          description: Trade executed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Trade executed successfully"
+                  trade:
+                    $ref: '#/components/schemas/Trade'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /market/intel/{playerId}:
+    get:
+      tags: [Intelligence]
+      summary: Get player's market intelligence
+      description: |
+        Retrieve discovered market intelligence and insider information.
+        
+        **Intelligence Division**: Classified market data obtained through various means. 
+        Use responsibly to avoid regulatory attention.
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Market intelligence retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  intel:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MarketIntel'
+                  totalIntel:
+                    type: integer
+                    example: 7
+                  activeIntel:
+                    type: integer
+                    example: 3
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /market/predictions:
+    get:
+      tags: [Intelligence]
+      summary: Get market predictions
+      description: |
+        Predictive market analysis based on gathered intelligence.
+        
+        **INSIDER TRADING GOLD**: Advanced market forecasting using proprietary algorithms. 
+        Highly profitable but potentially illegal.
+      parameters:
+        - name: lookahead
+          in: query
+          schema:
+            type: integer
+            default: 5
+            minimum: 1
+            maximum: 20
+          example: 10
+      responses:
+        '200':
+          description: Market predictions retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  currentTick:
+                    type: integer
+                    example: 1234567
+                  predictions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MarketPrediction'
+                  message:
+                    type: string
+                    example: "Market predictions available"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /market/tick:
+    post:
+      tags: [Market]
+      summary: Process market tick
+      description: |
+        Process market tick update (called by tick engine).
+        
+        **System Function**: Automated market processing including price updates, 
+        intelligence triggers, and event processing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentTick]
+              properties:
+                currentTick:
+                  type: integer
+                  example: 1234567
+      responses:
+        '200':
+          description: Market tick processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Market tick processed"
+                  triggeredEvents:
+                    type: array
+                    items:
+                      type: object
+                  marketSnapshot:
+                    $ref: '#/components/schemas/MarketSnapshot'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  # MISSION SYSTEM
+  /missions/available:
+    get:
+      tags: [Missions]
+      summary: Get available missions
+      description: |
+        Retrieve missions available for acceptance.
+        
+        **Mission Board**: Corporate-issued assignments with varying difficulty and rewards. 
+        All missions subject to company terms and conditions.
+      parameters:
+        - name: stationId
+          in: query
+          schema:
+            type: string
+          example: "mars-trade-depot"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [delivery, escort, exploration, combat, espionage]
+        - name: difficulty
+          in: query
+          schema:
+            type: string
+            enum: [easy, medium, hard, extreme]
+      responses:
+        '200':
+          description: Available missions retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Mission'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /missions/{missionId}:
+    get:
+      tags: [Missions]
+      summary: Get mission details
+      description: Detailed information about specific mission
+      parameters:
+        - name: missionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Mission details retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Mission'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /missions/{missionId}/accept:
+    post:
+      tags: [Missions]
+      summary: Accept mission
+      description: |
+        Accept mission assignment and bind to player/ship.
+        
+        **Mission Assignment**: Formal acceptance of corporate contract. 
+        Failure to complete may result in reputation penalties.
+      parameters:
+        - name: missionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [playerId, shipId]
+              properties:
+                playerId:
+                  type: string
+                  format: uuid
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+                shipId:
+                  type: string
+                  format: uuid
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        '200':
+          description: Mission accepted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Mission accepted successfully"
+                  mission:
+                    $ref: '#/components/schemas/Mission'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /missions/{missionId}/complete:
+    post:
+      tags: [Missions]
+      summary: Complete mission
+      description: Mark mission as completed and process rewards
+      parameters:
+        - name: missionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [playerId]
+              properties:
+                playerId:
+                  type: string
+                  format: uuid
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+                rewards:
+                  type: object
+                  properties:
+                    credits:
+                      type: integer
+                      example: 5000
+                    reputation:
+                      type: integer
+                      example: 10
+                notes:
+                  type: string
+                  example: "Mission completed successfully"
+      responses:
+        '200':
+          description: Mission completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Mission completed successfully"
+                  mission:
+                    $ref: '#/components/schemas/Mission'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /missions/stats:
+    get:
+      tags: [Missions]
+      summary: Get mission statistics
+      description: System-wide mission completion statistics
+      responses:
+        '200':
+          description: Mission statistics retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalMissions:
+                    type: integer
+                    example: 1247
+                  completedMissions:
+                    type: integer
+                    example: 892
+                  activeMissions:
+                    type: integer
+                    example: 183
+                  failedMissions:
+                    type: integer
+                    example: 172
+                  completionRate:
+                    type: number
+                    format: float
+                    example: 71.5
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  # POLITICS SYSTEM
+  /politics/hierarchy:
+    get:
+      tags: [Politics]
+      summary: Get political hierarchy
+      description: |
+        Retrieve information about politicians in the current world.
+        
+        **Political Intelligence**: Public information about government officials and their spheres of influence. 
+        Sensitive information requires separate discovery.
+      responses:
+        '200':
+          description: Political hierarchy retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  politicians:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Politician'
+                  worldSeed:
+                    type: string
+                    example: "current"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /politics/relationships/{playerId}:
+    get:
+      tags: [Politics]
+      summary: Get political relationships
+      description: Player's relationships with politicians
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Political relationships retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  relationships:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PoliticalRelationship'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /politics/discover:
+    post:
+      tags: [Politics]
+      summary: Discover politician through espionage
+      description: |
+        Attempt to discover politician weaknesses through various means.
+        
+        **Intelligence Operations**: Covert intelligence gathering on government officials. 
+        Success rates vary by method and target security.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [playerId, actionType]
+              properties:
+                playerId:
+                  type: string
+                  format: uuid
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+                actionType:
+                  type: string
+                  enum: [surveillance, bribery, social_engineering, hacking]
+                  example: "surveillance"
+      responses:
+        '200':
+          description: Political intelligence discovered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Political intelligence discovered"
+                  discovery:
+                    $ref: '#/components/schemas/PoliticalDiscovery'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /politics/influence:
+    post:
+      tags: [Politics]
+      summary: Influence politician
+      description: |
+        Attempt to influence politician through various methods.
+        
+        **Political Operations**: Direct influence attempts on government officials. 
+        May result in favorable policies or market manipulation opportunities.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [playerId, politicianId, method]
+              properties:
+                playerId:
+                  type: string
+                  format: uuid
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+                politicianId:
+                  type: string
+                  example: "governor"
+                method:
+                  type: string
+                  enum: [bribe, blackmail, information_trade, favor]
+                  example: "bribe"
+                amount:
+                  type: integer
+                  description: Credits or other resources to use
+                  example: 10000
+      responses:
+        '200':
+          description: Political influence attempt completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Political influence attempt completed"
+                  result:
+                    $ref: '#/components/schemas/InfluenceResult'
+                  newRelationship:
+                    $ref: '#/components/schemas/PoliticalRelationship'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /politics/market-event:
+    post:
+      tags: [Politics]
+      summary: Trigger political market event
+      description: |
+        Use political influence to trigger market events.
+        
+        **Market Manipulation**: High-level political favors can cause significant market movements. 
+        Highly illegal but extremely profitable.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [politicianId, eventType, targetResource, playerId]
+              properties:
+                politicianId:
+                  type: string
+                  example: "trade_commissioner"
+                eventType:
+                  type: string
+                  enum: [price_spike, supply_shortage, demand_surge, regulatory_change]
+                  example: "price_spike"
+                targetResource:
+                  type: string
+                  example: "rare_metals"
+                playerId:
+                  type: string
+                  format: uuid
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+      responses:
+        '200':
+          description: Political market event triggered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Political market event triggered"
+                  politicalEvent:
+                    $ref: '#/components/schemas/PoliticalEvent'
+                  marketEffect:
+                    $ref: '#/components/schemas/MarketEffect'
+                  newRelationship:
+                    $ref: '#/components/schemas/PoliticalRelationship'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          description: Insufficient political relationship
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  # NARRATIVE SYSTEM
+  /dialog/generate:
+    post:
+      tags: [Narrative]
+      summary: Generate dialog
+      description: |
+        Generate context-aware dialog using LLM with Story DNA system.
+        
+        **Narrative Engine**: Advanced story generation with persistent character memory 
+        and consequence tracking across game sessions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [actionType, playerState]
+              properties:
+                actionType:
+                  type: string
+                  example: "trade_negotiation"
+                playerState:
+                  type: object
+                  properties:
+                    playerId:
+                      type: string
+                      format: uuid
+                    previous_choices:
+                      type: array
+                      items:
+                        type: object
+                    reputation:
+                      type: object
+                    current_location:
+                      type: string
+                      example: "mars-trade-depot"
+      responses:
+        '200':
+          description: Dialog generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dialog'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          description: Dialog generation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Failed to generate dialog"
+                  fallback:
+                    $ref: '#/components/schemas/Dialog'
+                    
+  /choice/execute:
+    post:
+      tags: [Narrative]
+      summary: Execute player choice
+      description: |
+        Process player choice and execute all cascading consequences.
+        
+        **Consequence Engine**: Advanced choice processing with cascading effects across 
+        all game systems including politics, markets, crew relationships, and reputation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [playerId, choice]
+              properties:
+                playerId:
+                  type: string
+                  format: uuid
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+                choice:
+                  $ref: '#/components/schemas/Choice'
+                context:
+                  type: object
+                  description: Current game context
+                gameState:
+                  type: object
+                  description: Current game state
+      responses:
+        '200':
+          description: Choice executed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  immediate_effects:
+                    type: object
+                    properties:
+                      fuel:
+                        type: integer
+                        example: -10
+                      credits:
+                        type: integer
+                        example: 5000
+                      heat:
+                        type: integer
+                        example: 5
+                      narrative:
+                        type: string
+                        example: "The deal was successful, but you attracted some attention"
+                  political_effects:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PoliticalEffect'
+                  market_effects:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MarketEffect'
+                  crew_effects:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CrewEffect'
+                  reputation:
+                    $ref: '#/components/schemas/Reputation'
+                  active_modifiers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Modifier'
+                  narrative_consequences:
+                    type: array
+                    items:
+                      type: object
+                  cascading_effects:
+                    type: integer
+                    example: 7
+                  message:
+                    type: string
+                    example: "Choice executed with 7 cascading effects across all systems"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /logs/{logId}:
+    get:
+      tags: [Narrative]
+      summary: Get specific log entry
+      description: Retrieve detailed information about specific log entry
+      parameters:
+        - name: logId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Log entry retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShipLog'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /logs/recent:
+    get:
+      tags: [Narrative]
+      summary: Get recent logs
+      description: Retrieve recent log entries across all players
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: complexity
+          in: query
+          schema:
+            type: string
+            enum: [simple, moderate, complex]
+      responses:
+        '200':
+          description: Recent logs retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShipLog'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /logs/stats:
+    get:
+      tags: [Narrative]
+      summary: Get log statistics
+      description: System-wide log generation statistics
+      responses:
+        '200':
+          description: Log statistics retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalLogs:
+                    type: integer
+                    example: 2847
+                  logsToday:
+                    type: integer
+                    example: 47
+                  avgComplexity:
+                    type: string
+                    example: "moderate"
+                  llmGeneratedPercent:
+                    type: number
+                    format: float
+                    example: 78.5
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  # CONTENT GENERATION
+  /api/crew/generate-name:
+    post:
+      tags: [Content Generation]
+      summary: Generate crew member name
+      description: |
+        Generate culturally appropriate crew member name using LLM.
+        
+        **HR Department**: Automated name generation for personnel files. 
+        Cultural sensitivity algorithms ensure appropriate naming conventions.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                context:
+                  type: string
+                  default: "spacepunk_corporate_dystopia"
+                cultural_background:
+                  type: string
+                  default: "corporate"
+                  example: "corporate"
+                seed:
+                  type: string
+                  description: Random seed for consistent generation
+      responses:
+        '200':
+          description: Name generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: "Chen Martinez"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /api/crew/generate-employment-note:
+    post:
+      tags: [Content Generation]
+      summary: Generate employment note
+      description: Generate corporate employment documentation for crew member
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                crewMember:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                      example: "Chen Martinez"
+                    cultural_background:
+                      type: string
+                      example: "corporate"
+                    experience:
+                      type: string
+                      example: "moderate"
+                context:
+                  type: string
+                  default: "spacepunk_corporate_dystopia"
+      responses:
+        '200':
+          description: Employment note generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  note:
+                    type: string
+                    example: "Previously employed at Galactic Shipping Solutions until the incident with the coffee machine. Shows proficiency in heavy machinery operation."
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /api/crew/generate-candidate:
+    post:
+      tags: [Content Generation]
+      summary: Generate complete crew candidate
+      description: Generate fully formed crew candidate with stats and background
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                context:
+                  type: string
+                  default: "spacepunk_corporate_dystopia"
+                seed:
+                  type: string
+                  description: Random seed for consistent generation
+      responses:
+        '200':
+          description: Crew candidate generated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CrewCandidate'
+                  - type: object
+                    properties:
+                      employment_note:
+                        type: string
+                        example: "Recently completed corporate training program"
+                      personality_summary:
+                        type: string
+                        example: "Maintains professional demeanor while adapting to changing operational requirements"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /api/crew/generate-relationships:
+    post:
+      tags: [Content Generation]
+      summary: Generate crew relationships
+      description: Generate relationships between crew members on ship
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [shipId]
+              properties:
+                shipId:
+                  type: string
+                  format: uuid
+                  example: "123e4567-e89b-12d3-a456-426614174000"
+                seed:
+                  type: string
+                  description: Random seed for consistent generation
+      responses:
+        '200':
+          description: Relationships generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Generated 3 new relationships"
+                  relationships:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CrewRelationship'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /generate/resources/{count}:
+    post:
+      tags: [Content Generation]
+      summary: Generate resources
+      description: Generate resource definitions for market system
+      parameters:
+        - name: count
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 20
+      responses:
+        '200':
+          description: Resources generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Generated 20 resources"
+                  resources:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Resource'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /generate/stations/{count}:
+    post:
+      tags: [Content Generation]
+      summary: Generate stations
+      description: Generate station definitions for world building
+      parameters:
+        - name: count
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+          example: 15
+      responses:
+        '200':
+          description: Stations generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Generated 15 stations"
+                  stations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Station'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /generate/missions/{count}:
+    post:
+      tags: [Content Generation]
+      summary: Generate missions
+      description: Generate mission definitions for job board
+      parameters:
+        - name: count
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          example: 25
+      responses:
+        '200':
+          description: Missions generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Generated 25 missions"
+                  missions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Mission'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /generate/world:
+    post:
+      tags: [Content Generation]
+      summary: Generate complete world
+      description: |
+        Generate all content types to populate game world.
+        
+        **World Generation**: Comprehensive world population including resources, 
+        stations, missions, and other content. Use for initial world setup.
+      responses:
+        '200':
+          description: World generation complete
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "World population complete"
+                  generated:
+                    type: object
+                    properties:
+                      resources:
+                        type: integer
+                        example: 30
+                      stations:
+                        type: integer
+                        example: 20
+                      missions:
+                        type: integer
+                        example: 40
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  # TRAINING STATISTICS
+  /training/stats:
+    get:
+      tags: [Training]
+      summary: Get training statistics
+      description: Training system performance metrics
+      parameters:
+        - name: shipId
+          in: query
+          schema:
+            type: string
+            format: uuid
+          description: Filter by specific ship
+        - name: days
+          in: query
+          schema:
+            type: integer
+            default: 7
+            minimum: 1
+            maximum: 30
+          description: Number of days to analyze
+      responses:
+        '200':
+          description: Training statistics retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalSessions:
+                    type: integer
+                    example: 47
+                  completionRate:
+                    type: number
+                    format: float
+                    example: 85.2
+                  avgTrainingTime:
+                    type: string
+                    example: "18h"
+                  activeTraining:
+                    type: integer
+                    example: 12
+                  completedToday:
+                    type: integer
+                    example: 3
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  # LLM SYSTEM
+  /api/llm/status:
+    get:
+      tags: [Debug]
+      summary: Get LLM queue status
+      description: |
+        Monitor LLM processing queue and rate limiting status.
+        
+        **System Monitoring**: Real-time status of narrative generation systems 
+        including queue depth and processing rates.
+      responses:
+        '200':
+          description: LLM status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "operational"
+                  queue:
+                    type: object
+                    properties:
+                      pending:
+                        type: integer
+                        example: 5
+                      processing:
+                        type: integer
+                        example: 2
+                      completed:
+                        type: integer
+                        example: 143
+                      failed:
+                        type: integer
+                        example: 2
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2024-01-15T10:30:00Z"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /api/crew/generate-narratives:
+    post:
+      tags: [Content Generation]
+      summary: Generate crew narratives
+      description: Generate comprehensive narratives for crew member (rate-limited)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [crewMember]
+              properties:
+                crewMember:
+                  $ref: '#/components/schemas/CrewMember'
+                priority:
+                  type: string
+                  enum: [low, normal, high]
+                  default: "normal"
+      responses:
+        '200':
+          description: Narratives generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  description:
+                    type: string
+                    example: "A competent engineer with dry sense of humor"
+                  health:
+                    type: string
+                    example: "In good physical condition"
+                  morale:
+                    type: string
+                    example: "Maintains positive attitude despite workplace challenges"
+                  stress:
+                    type: string
+                    example: "Managing work-related stress adequately"
+                  skill:
+                    type: string
+                    example: "Demonstrates proficiency in technical systems"
+                  trait:
+                    type: string
+                    example: "Known for reliability and attention to detail"
+                  background:
+                    type: string
+                    example: "Previously worked in commercial shipping sector"
+                  performance:
+                    type: string
+                    example: "Consistently meets performance expectations"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  # GOD MODE / ADMIN ENDPOINTS
+  /god-mode/world-overview:
+    get:
+      tags: [God Mode]
+      summary: Get world overview
+      description: |
+        Comprehensive world statistics for administrative dashboard.
+        
+        **ADMIN ACCESS REQUIRED**: System-wide statistics and performance metrics 
+        for world management and debugging.
+      responses:
+        '200':
+          description: World overview retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  summary:
+                    type: object
+                    properties:
+                      totalPlayers:
+                        type: integer
+                        example: 247
+                      totalShips:
+                        type: integer
+                        example: 198
+                      livingCrewMembers:
+                        type: integer
+                        example: 1456
+                      totalStations:
+                        type: integer
+                        example: 73
+                      marketItems:
+                        type: integer
+                        example: 2847
+                      activeTraining:
+                        type: integer
+                        example: 89
+                  missionsByStatus:
+                    type: object
+                    properties:
+                      available:
+                        type: integer
+                        example: 143
+                      accepted:
+                        type: integer
+                        example: 67
+                      completed:
+                        type: integer
+                        example: 892
+                      failed:
+                        type: integer
+                        example: 23
+                  timestamp:
+                    type: string
+                    format: date-time
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /god-mode/players:
+    get:
+      tags: [God Mode]
+      summary: Get all players
+      description: Comprehensive player list with statistics
+      responses:
+        '200':
+          description: Players retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                    - $ref: '#/components/schemas/Player'
+                    - type: object
+                      properties:
+                        ship_name:
+                          type: string
+                          example: "Torres's Vessel"
+                        hull_type:
+                          type: string
+                          example: "basic_hauler"
+                        ship_status:
+                          type: string
+                          example: "active"
+                        crew_count:
+                          type: integer
+                          example: 4
+                        active_missions:
+                          type: integer
+                          example: 2
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /god-mode/ships:
+    get:
+      tags: [God Mode]
+      summary: Get all ships
+      description: Comprehensive ship list with crew and mission info
+      responses:
+        '200':
+          description: Ships retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                    - $ref: '#/components/schemas/Ship'
+                    - type: object
+                      properties:
+                        player_name:
+                          type: string
+                          example: "captain_torres"
+                        player_email:
+                          type: string
+                          example: "torres@spacecorp.invalid"
+                        crew_count:
+                          type: integer
+                          example: 4
+                        active_missions:
+                          type: integer
+                          example: 2
+                        active_training:
+                          type: integer
+                          example: 1
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /god-mode/crew:
+    get:
+      tags: [God Mode]
+      summary: Get all crew members
+      description: Comprehensive crew list with ship and player info
+      responses:
+        '200':
+          description: Crew members retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                    - $ref: '#/components/schemas/CrewMember'
+                    - type: object
+                      properties:
+                        ship_name:
+                          type: string
+                          example: "Torres's Vessel"
+                        player_name:
+                          type: string
+                          example: "captain_torres"
+                        active_training:
+                          type: integer
+                          example: 1
+                        memory_count:
+                          type: integer
+                          example: 7
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /god-mode/stations:
+    get:
+      tags: [God Mode]
+      summary: Get all stations
+      description: Comprehensive station list with market and mission activity
+      responses:
+        '200':
+          description: Stations retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                    - $ref: '#/components/schemas/Station'
+                    - type: object
+                      properties:
+                        market_items:
+                          type: integer
+                          example: 47
+                        total_missions:
+                          type: integer
+                          example: 23
+                        available_missions:
+                          type: integer
+                          example: 8
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /god-mode/missions:
+    get:
+      tags: [God Mode]
+      summary: Get all missions
+      description: Comprehensive mission list with player and ship info
+      responses:
+        '200':
+          description: Missions retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                    - $ref: '#/components/schemas/Mission'
+                    - type: object
+                      properties:
+                        station_name:
+                          type: string
+                          example: "Mars Trade Depot"
+                        accepted_by_player:
+                          type: string
+                          example: "captain_torres"
+                        ship_name:
+                          type: string
+                          example: "Torres's Vessel"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /god-mode/market:
+    get:
+      tags: [God Mode]
+      summary: Get market overview
+      description: Comprehensive market data with pricing trends
+      responses:
+        '200':
+          description: Market data retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                    - $ref: '#/components/schemas/MarketData'
+                    - type: object
+                      properties:
+                        resource_name:
+                          type: string
+                          example: "Rare Metals"
+                        resource_category:
+                          type: string
+                          example: "industrial"
+                        base_price:
+                          type: number
+                          format: float
+                          example: 150.0
+                        station_name:
+                          type: string
+                          example: "Mars Trade Depot"
+                        galaxy:
+                          type: string
+                          example: "Sol System"
+                        sector:
+                          type: string
+                          example: "Inner Colonies"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /god-mode/training:
+    get:
+      tags: [God Mode]
+      summary: Get training overview
+      description: Comprehensive training queue with crew and ship info
+      responses:
+        '200':
+          description: Training data retrieved
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  allOf:
+                    - $ref: '#/components/schemas/TrainingSession'
+                    - type: object
+                      properties:
+                        crew_name:
+                          type: string
+                          example: "Chen Martinez"
+                        ship_name:
+                          type: string
+                          example: "Torres's Vessel"
+                        player_name:
+                          type: string
+                          example: "captain_torres"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /god-mode/system-status:
+    get:
+      tags: [God Mode]
+      summary: Get system status
+      description: System resources and performance metrics
+      responses:
+        '200':
+          description: System status retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  databaseStats:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        tablename:
+                          type: string
+                          example: "players"
+                        live_rows:
+                          type: integer
+                          example: 247
+                        inserts:
+                          type: integer
+                          example: 1523
+                        updates:
+                          type: integer
+                          example: 8947
+                        deletes:
+                          type: integer
+                          example: 23
+                  serverUptime:
+                    type: number
+                    format: float
+                    example: 86400.5
+                  memoryUsage:
+                    type: object
+                    properties:
+                      rss:
+                        type: integer
+                        example: 45678912
+                      heapTotal:
+                        type: integer
+                        example: 12345678
+                      heapUsed:
+                        type: integer
+                        example: 8765432
+                      external:
+                        type: integer
+                        example: 1234567
+                  timestamp:
+                    type: string
+                    format: date-time
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  # DEBUG ENDPOINTS
+  /debug/routes:
+    get:
+      tags: [Debug]
+      summary: Test route connectivity
+      description: Simple connectivity test for debugging
+      responses:
+        '200':
+          description: Routes working
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Routes are working"
+                  timestamp:
+                    type: string
+                    format: date-time
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+          
+  /debug/resources:
+    get:
+      tags: [Debug]
+      summary: Debug resource data
+      description: Debug endpoint to examine resource, station, and market data
+      responses:
+        '200':
+          description: Debug data retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  resourceCount:
+                    type: integer
+                    example: 10
+                  resources:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Resource'
+                  stationCount:
+                    type: integer
+                    example: 10
+                  stations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Station'
+                  marketDataCount:
+                    type: integer
+                    example: 10
+                  marketData:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MarketData'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: SpaceCorp™ API Key (contact support@spacecorp.invalid)
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token for authenticated sessions
+
+  schemas:
+    Player:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        username:
+          type: string
+          example: "captain_torres"
+        email:
+          type: string
+          format: email
+          example: "torres@spacecorp.invalid"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        last_login:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        is_active:
+          type: boolean
+          example: true
+        deaths:
+          type: integer
+          example: 2
+        software_license:
+          type: string
+          enum: [BASIC, STANDARD, PROFESSIONAL]
+          example: "STANDARD"
+        credits:
+          type: integer
+          example: 15000
+          
+    Ship:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        player_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        name:
+          type: string
+          example: "Torres's Vessel"
+        hull_type:
+          type: string
+          example: "basic_hauler"
+        status:
+          type: string
+          enum: [active, docked, in_transit, destroyed]
+          example: "active"
+        location_galaxy:
+          type: string
+          example: "Sol System"
+        location_station:
+          type: string
+          example: "Earth Station Alpha"
+        fuel_current:
+          type: integer
+          example: 85
+        fuel_max:
+          type: integer
+          example: 100
+        cargo_used:
+          type: integer
+          example: 23
+        cargo_max:
+          type: integer
+          example: 50
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        destroyed_at:
+          type: string
+          format: date-time
+          nullable: true
+          
+    CrewMember:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        ship_id:
+          type: string
+          format: uuid
+          nullable: true
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        name:
+          type: string
+          example: "Chen Martinez"
+        age:
+          type: integer
+          example: 32
+        homeworld:
+          type: string
+          example: "Mars"
+        culture:
+          type: string
+          example: "Martian"
+        skill_engineering:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 45
+        skill_piloting:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 32
+        skill_social:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 28
+        skill_combat:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 15
+        trait_bravery:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 67
+        trait_loyalty:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 78
+        trait_ambition:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 45
+        trait_work_ethic:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 82
+        health:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 87
+        morale:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 73
+        fatigue:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 25
+        parent_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          example: []
+        hired_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        died_at:
+          type: string
+          format: date-time
+          nullable: true
+          
+    CrewCandidate:
+      allOf:
+        - $ref: '#/components/schemas/CrewMember'
+        - type: object
+          properties:
+            cultural_background:
+              type: string
+              example: "corporate"
+            cost:
+              type: integer
+              example: 2500
+            experience:
+              type: integer
+              example: 45
+              
+    CrewRelationship:
+      type: object
+      properties:
+        crew1:
+          type: string
+          example: "Chen Martinez"
+        crew2:
+          type: string
+          example: "Sarah Johnson"
+        relationship_value:
+          type: integer
+          minimum: -100
+          maximum: 100
+          example: 47
+        backstory:
+          type: string
+          example: "Both worked graveyard shifts at the same orbital freight depot, bonding over terrible coffee and worse management"
+          
+    TrainingSession:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        crew_member_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        training_type:
+          type: string
+          example: "engineering"
+        skill_type:
+          type: string
+          example: "engineering"
+        start_time:
+          type: string
+          format: date-time
+        end_time:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+          description: Duration in hours
+          example: 24
+        intensity:
+          type: string
+          enum: [low, standard, high]
+          example: "standard"
+        progress_made:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.67
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        cancelled_at:
+          type: string
+          format: date-time
+          nullable: true
+        cancel_reason:
+          type: string
+          nullable: true
+          example: "Emergency assignment required"
+        created_at:
+          type: string
+          format: date-time
+          
+    TrainingOption:
+      type: object
+      properties:
+        skill:
+          type: string
+          example: "engineering"
+        name:
+          type: string
+          example: "Advanced Reactor Theory"
+        description:
+          type: string
+          example: "Comprehensive training in fusion reactor maintenance and optimization"
+        duration:
+          type: integer
+          description: Duration in hours
+          example: 48
+        intensity:
+          type: string
+          enum: [low, standard, high]
+          example: "high"
+        requirements:
+          type: object
+          properties:
+            minimum_skill:
+              type: integer
+              example: 30
+            equipment_needed:
+              type: array
+              items:
+                type: string
+              example: ["simulation_pod", "technical_manuals"]
+        potential_improvement:
+          type: integer
+          description: Skill points improvement
+          example: 15
+          
+    TrainingRecommendation:
+      type: object
+      properties:
+        skill:
+          type: string
+          example: "engineering"
+        training_name:
+          type: string
+          example: "Reactor Maintenance Certification"
+        priority:
+          type: string
+          enum: [low, medium, high, critical]
+          example: "high"
+        reason:
+          type: string
+          example: "Current engineering skill below ship requirements"
+        estimated_benefit:
+          type: integer
+          example: 20
+        estimated_duration:
+          type: integer
+          description: Duration in hours
+          example: 36
+          
+    Mission:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        title:
+          type: string
+          example: "Urgent Cargo Delivery to Europa Station"
+        description:
+          type: string
+          example: "Transport time-sensitive medical supplies to Europa Station within 72 hours. Discretion required."
+        type:
+          type: string
+          enum: [delivery, escort, exploration, combat, espionage]
+          example: "delivery"
+        difficulty:
+          type: string
+          enum: [easy, medium, hard, extreme]
+          example: "medium"
+        status:
+          type: string
+          enum: [available, accepted, completed, failed, expired]
+          example: "available"
+        mission_type:
+          type: string
+          example: "delivery"
+        issuing_faction:
+          type: string
+          example: "Galactic Medical Corps"
+        reward_credits:
+          type: integer
+          example: 8500
+        deadline_hours:
+          type: integer
+          example: 72
+        station_id:
+          type: string
+          example: "earth-station-alpha"
+        ship_id:
+          type: string
+          format: uuid
+          nullable: true
+        accepted_by:
+          type: string
+          format: uuid
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+          
+    MarketData:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        station_id:
+          type: string
+          example: "mars-trade-depot"
+        resource_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        resource_name:
+          type: string
+          example: "Rare Metals"
+        resource_category:
+          type: string
+          example: "industrial"
+        current_price:
+          type: number
+          format: float
+          example: 145.75
+        supply:
+          type: integer
+          example: 234
+        demand:
+          type: integer
+          example: 187
+        price_trend:
+          type: number
+          format: float
+          description: Price change percentage
+          example: 2.3
+        last_updated:
+          type: string
+          format: date-time
+          
+    MarketSnapshot:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        markets:
+          type: array
+          items:
+            type: object
+            properties:
+              resourceId:
+                type: string
+                example: "rare_metals"
+              name:
+                type: string
+                example: "Rare Metals"
+              price:
+                type: number
+                format: float
+                example: 145.75
+              volume:
+                type: integer
+                example: 234
+              change:
+                type: number
+                format: float
+                example: 2.3
+              volatility:
+                type: string
+                example: "moderate"
+        totalVolume:
+          type: integer
+          example: 23456
+        activeResources:
+          type: integer
+          example: 47
+          
+    MarketTrend:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        price:
+          type: number
+          format: float
+          example: 142.50
+        volume:
+          type: integer
+          example: 245
+        volatility:
+          type: number
+          format: float
+          example: 0.15
+          
+    MarketIntel:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "intel_001"
+        resourceId:
+          type: string
+          example: "rare_metals"
+        type:
+          type: string
+          enum: [price_spike, supply_shortage, demand_surge, insider_tip]
+          example: "price_spike"
+        impact:
+          type: string
+          enum: [low, medium, high]
+          example: "high"
+        description:
+          type: string
+          example: "Classified: Major industrial contract will cause price spike in 3 ticks"
+        triggerTick:
+          type: integer
+          example: 1234570
+        discoveredAt:
+          type: string
+          format: date-time
+        triggered:
+          type: boolean
+          example: false
+        reliability:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.85
+          
+    MarketPrediction:
+      type: object
+      properties:
+        tick:
+          type: integer
+          example: 1234570
+        resourceId:
+          type: string
+          example: "rare_metals"
+        predictedPrice:
+          type: number
+          format: float
+          example: 187.50
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.73
+        factors:
+          type: array
+          items:
+            type: string
+          example: ["political_event", "supply_disruption"]
+          
+    Trade:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        player_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        station_id:
+          type: string
+          example: "mars-trade-depot"
+        resource_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        side:
+          type: string
+          enum: [buy, sell]
+          example: "buy"
+        volume:
+          type: integer
+          example: 100
+        price:
+          type: number
+          format: float
+          example: 145.75
+        total_value:
+          type: number
+          format: float
+          example: 14575.00
+        executed_at:
+          type: string
+          format: date-time
+          
+    Resource:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        code:
+          type: string
+          example: "RM_001"
+        name:
+          type: string
+          example: "Rare Metals"
+        category:
+          type: string
+          example: "industrial"
+        base_price:
+          type: number
+          format: float
+          example: 150.00
+        weight:
+          type: number
+          format: float
+          example: 2.5
+        volume:
+          type: number
+          format: float
+          example: 1.0
+        description:
+          type: string
+          example: "High-grade metallic compounds essential for advanced manufacturing"
+          
+    Station:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        name:
+          type: string
+          example: "Mars Trade Depot"
+        galaxy:
+          type: string
+          example: "Sol System"
+        sector:
+          type: string
+          example: "Inner Colonies"
+        station_type:
+          type: string
+          example: "commercial"
+        faction:
+          type: string
+          example: "Mars Colonial Authority"
+        population:
+          type: integer
+          example: 45000
+        security_level:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 65
+        description:
+          type: string
+          example: "Primary commercial hub for Martian trade operations"
+        notorious_for:
+          type: string
+          example: "Bureaucratic inefficiency and coffee shortages"
+        bureaucratic_nightmare:
+          type: string
+          example: "Requires Form 27-B for all cargo transfers over 50 units"
+        local_regulations:
+          type: string
+          example: "Mandatory safety briefings for all visitors. No exceptions."
+          
+    ShipLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        player_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        ship_id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        entry_type:
+          type: string
+          enum: [absence_story, system_event, crew_activity, mission_update]
+          example: "absence_story"
+        title:
+          type: string
+          example: "Training Progress Report"
+        content:
+          type: string
+          example: "During the captain's absence, crew member Chen Martinez completed advanced reactor training, improving engineering skills by 15 points. The coffee machine was repaired, significantly boosting crew morale."
+        complexity:
+          type: string
+          enum: [simple, moderate, complex]
+          example: "moderate"
+        generated_by:
+          type: string
+          enum: [llm, template, system]
+          example: "llm"
+        created_at:
+          type: string
+          format: date-time
+          
+    Politician:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "governor"
+        name:
+          type: string
+          example: "Governor Patricia Hawthorne"
+        title:
+          type: string
+          example: "Planetary Governor"
+        power:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 85
+        marketInfluence:
+          type: array
+          items:
+            type: string
+          example: ["rare_metals", "industrial_goods"]
+        background:
+          type: string
+          example: "Former corporate executive with extensive political connections"
+        currentAgenda:
+          type: string
+          example: "Promoting industrial expansion while maintaining environmental regulations"
+          
+    PoliticalRelationship:
+      type: object
+      properties:
+        politicianId:
+          type: string
+          example: "governor"
+        name:
+          type: string
+          example: "Governor Patricia Hawthorne"
+        title:
+          type: string
+          example: "Planetary Governor"
+        relationshipScore:
+          type: integer
+          minimum: -100
+          maximum: 100
+          example: 23
+        knownWeaknesses:
+          type: array
+          items:
+            type: string
+          example: ["gambling_addiction", "family_pressure"]
+        lastInteraction:
+          type: string
+          format: date-time
+          nullable: true
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              action:
+                type: string
+                example: "bribe_attempt"
+              result:
+                type: string
+                example: "successful"
+              impact:
+                type: integer
+                example: 15
+              timestamp:
+                type: string
+                format: date-time
+                
+    PoliticalDiscovery:
+      type: object
+      properties:
+        politicianId:
+          type: string
+          example: "trade_commissioner"
+        weakness:
+          type: string
+          example: "gambling_addiction"
+        discoveryMethod:
+          type: string
+          example: "surveillance"
+        reliability:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.73
+        description:
+          type: string
+          example: "Commissioner frequents underground gambling dens on Tuesdays"
+          
+    InfluenceResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        method:
+          type: string
+          example: "bribe"
+        relationshipChange:
+          type: integer
+          example: 15
+        sideEffects:
+          type: array
+          items:
+            type: string
+          example: ["increased_scrutiny", "market_favor"]
+        description:
+          type: string
+          example: "The governor accepted your generous contribution to their campaign fund"
+          
+    PoliticalEvent:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        eventType:
+          type: string
+          example: "price_spike"
+        description:
+          type: string
+          example: "Governor issued emergency procurement order for rare metals"
+        marketImpact:
+          type: string
+          example: "high"
+        duration:
+          type: integer
+          description: Duration in ticks
+          example: 10
+          
+    PoliticalEffect:
+      type: object
+      properties:
+        politicianId:
+          type: string
+          example: "governor"
+        effect:
+          type: string
+          example: "relationship_improved"
+        magnitude:
+          type: integer
+          example: 15
+        description:
+          type: string
+          example: "Your assistance with the trade negotiations impressed the governor"
+          
+    MarketEffect:
+      type: object
+      properties:
+        resourceId:
+          type: string
+          example: "rare_metals"
+        effect:
+          type: string
+          example: "price_spike"
+        magnitude:
+          type: number
+          format: float
+          example: 25.5
+        duration:
+          type: integer
+          description: Duration in ticks
+          example: 5
+        description:
+          type: string
+          example: "Political intervention caused temporary price spike"
+          
+    CrewEffect:
+      type: object
+      properties:
+        crewMemberId:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        effect:
+          type: string
+          example: "morale_boost"
+        magnitude:
+          type: integer
+          example: 10
+        description:
+          type: string
+          example: "Crew member impressed by captain's negotiation skills"
+          
+    Dialog:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "dialog_001"
+        title:
+          type: string
+          example: "Trade Negotiation"
+        description:
+          type: string
+          example: "A tense negotiation with the station trade commissioner"
+        speaker:
+          type: string
+          example: "Commissioner Walsh"
+        dialogue:
+          type: string
+          example: "So, Captain, I hear you're looking to move some cargo. The regulations have become quite... complex lately."
+        choices:
+          type: array
+          items:
+            $ref: '#/components/schemas/Choice'
+        context:
+          type: object
+          properties:
+            location:
+              type: string
+              example: "mars-trade-depot"
+            mood:
+              type: string
+              example: "tense"
+            consequences_available:
+              type: boolean
+              example: true
+              
+    Choice:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "choice_001"
+        text:
+          type: string
+          example: "Offer a small bribe to expedite the paperwork"
+        requirements:
+          type: object
+          properties:
+            credits:
+              type: integer
+              example: 1000
+            skills:
+              type: object
+              properties:
+                social:
+                  type: integer
+                  example: 30
+        consequences:
+          type: object
+          properties:
+            credits:
+              type: string
+              example: "-1000"
+            heat:
+              type: string
+              example: "+5"
+            narrative:
+              type: string
+              example: "The commissioner discretely pockets the credits and your paperwork moves to the top of the pile"
+            political_effect:
+              type: object
+              properties:
+                politician:
+                  type: string
+                  example: "trade_commissioner"
+                relationship_change:
+                  type: integer
+                  example: 5
+        risk_level:
+          type: string
+          enum: [low, medium, high]
+          example: "medium"
+          
+    Consequence:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "consequence_001"
+        choiceId:
+          type: string
+          example: "choice_001"
+        type:
+          type: string
+          enum: [immediate, delayed, cascading]
+          example: "immediate"
+        system:
+          type: string
+          enum: [credits, reputation, crew, politics, market]
+          example: "politics"
+        effect:
+          type: string
+          example: "relationship_improved"
+        magnitude:
+          type: number
+          format: float
+          example: 15.0
+        description:
+          type: string
+          example: "Your generous contribution improved relations with the trade commissioner"
+        timestamp:
+          type: string
+          format: date-time
+          
+    Reputation:
+      type: object
+      properties:
+        overall:
+          type: integer
+          minimum: -100
+          maximum: 100
+          example: 23
+        faction_standings:
+          type: object
+          properties:
+            corporate:
+              type: integer
+              example: 45
+            criminal:
+              type: integer
+              example: -12
+            political:
+              type: integer
+              example: 8
+            trade_guild:
+              type: integer
+              example: 67
+        recent_actions:
+          type: array
+          items:
+            type: object
+            properties:
+              action:
+                type: string
+                example: "successful_trade"
+              impact:
+                type: integer
+                example: 5
+              timestamp:
+                type: string
+                format: date-time
+                
+    Modifier:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "modifier_001"
+        type:
+          type: string
+          enum: [skill_bonus, cost_reduction, relationship_boost, market_access]
+          example: "cost_reduction"
+        target:
+          type: string
+          example: "bribe_costs"
+        magnitude:
+          type: number
+          format: float
+          example: 0.15
+        description:
+          type: string
+          example: "Reduced bribery costs due to political connections"
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        source:
+          type: string
+          example: "political_favor"
+          
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Resource not found"
+        code:
+          type: string
+          example: "RESOURCE_NOT_FOUND"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        details:
+          type: object
+          nullable: true
+          
+  responses:
+    BadRequest:
+      description: Bad request - Invalid input data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Missing required fields"
+            code: "VALIDATION_ERROR"
+            timestamp: "2024-01-15T10:30:00Z"
+            
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Resource not found"
+            code: "NOT_FOUND"
+            timestamp: "2024-01-15T10:30:00Z"
+            
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Internal server error"
+            code: "INTERNAL_ERROR"
+            timestamp: "2024-01-15T10:30:00Z"
+            details:
+              message: "Database connection failed"

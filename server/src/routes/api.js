@@ -1404,6 +1404,87 @@ router.post('/generate/world', async (req, res) => {
   }
 });
 
+// Streaming Dialog Generation with Story DNA
+router.post('/dialog/generate-stream', async (req, res) => {
+  try {
+    const { actionType, playerState } = req.body;
+    
+    if (!actionType || !playerState) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: actionType and playerState' 
+      });
+    }
+    
+    // Set up Server-Sent Events
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control'
+    });
+    
+    console.log(`Streaming dialog for ${actionType} action with state:`, playerState);
+    
+    let streamingContent = '';
+    let dialogState = {
+      situation: '',
+      choices: [],
+      id: `${actionType}-${Date.now()}`
+    };
+    
+    // Stream dialog generation
+    try {
+      await dialogGenerator.generateStreamingDialog(actionType, playerState, {
+        onChunk: (chunk, fullContent) => {
+          streamingContent = fullContent;
+          
+          // Try to parse partial JSON and update dialog state
+          try {
+            const partialDialog = dialogGenerator.parsePartialDialog(fullContent);
+            if (partialDialog) {
+              dialogState = { ...dialogState, ...partialDialog };
+            }
+          } catch (error) {
+            // Ignore parsing errors for partial content
+          }
+          
+          // Send update to client
+          res.write(`data: ${JSON.stringify({
+            type: 'chunk',
+            content: chunk,
+            fullContent: fullContent,
+            dialog: dialogState
+          })}\n\n`);
+        }
+      });
+      
+      // Send final complete dialog
+      const finalDialog = dialogGenerator.parseDialogResponse(streamingContent);
+      res.write(`data: ${JSON.stringify({
+        type: 'complete',
+        dialog: finalDialog
+      })}\n\n`);
+      
+    } catch (error) {
+      console.error('Error in streaming dialog generation:', error);
+      res.write(`data: ${JSON.stringify({
+        type: 'error',
+        error: `LLM UNAVAILABLE: ${error.message}`,
+        message: 'Start your local LLM server (LM Studio) on port 1234 to generate dynamic content'
+      })}\n\n`);
+    } finally {
+      res.end();
+    }
+    
+  } catch (error) {
+    console.error('Error setting up streaming dialog:', error);
+    res.status(500).json({ 
+      error: `Streaming setup failed: ${error.message}`
+    });
+  }
+});
+
 // Dialog Generation with Story DNA
 router.post('/dialog/generate', async (req, res) => {
   try {

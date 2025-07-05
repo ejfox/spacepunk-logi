@@ -8,7 +8,10 @@
       </div>
       
       <div class="dialog-situation">
-        <div class="situation-text">{{ dialog.situation }}</div>
+        <div class="situation-text" :class="{ 'streaming': dialog.isStreaming }">
+          {{ dialog.situation }}
+          <span v-if="dialog.isStreaming" class="streaming-cursor">█</span>
+        </div>
         <div v-if="dialog.context" class="situation-context">
           <span v-for="(value, key) in dialog.context" :key="key" class="context-item">
             {{ key.toUpperCase() }}: {{ value }}
@@ -18,7 +21,7 @@
       
       <div class="dialog-choices">
         <!-- Loading State -->
-        <div v-if="dialog.isLoading" class="loading-section">
+        <div v-if="dialog.isLoading || dialog.isStreaming" class="loading-section">
           <div class="loading-header">
             <span class="header-marker">></span>
             GENERATING RESPONSE OPTIONS...
@@ -654,5 +657,22 @@ onUnmounted(() => {
 @keyframes dot-pulse {
   0%, 80%, 100% { opacity: 0.3; }
   40% { opacity: 1; }
+}
+
+/* Streaming text styles */
+.situation-text.streaming {
+  background: #050505;
+  border: 1px solid #333333;
+  padding: 8px;
+}
+
+.streaming-cursor {
+  animation: cursor-blink 1s infinite;
+  color: #00ff00;
+}
+
+@keyframes cursor-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
 }
 </style>

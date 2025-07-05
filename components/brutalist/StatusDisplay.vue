@@ -1,22 +1,25 @@
 <template>
-  <div class="status-display">
-    <div class="status-header">
-      <span class="status-title">{{ title }}</span>
-      <span v-if="subtitle" class="status-subtitle">{{ subtitle }}</span>
+  <div class="border-2 border-white bg-gray-900 font-mono text-white shadow-lg">
+    <div class="border-b-2 border-white px-4 py-3 bg-black flex justify-between items-center">
+      <span class="font-bold text-base tracking-wider uppercase">{{ title }}</span>
+      <span v-if="subtitle" class="text-sm opacity-70 font-mono tracking-wide">{{ subtitle }}</span>
     </div>
-    <div class="status-content">
-      <div v-for="item in items" :key="item.key" class="status-item" :class="item.class">
-        <span class="status-key">{{ item.key }}:</span>
-        <span class="status-value">{{ item.value }}</span>
+    <div class="p-4 space-y-3">
+      <div v-for="item in items" :key="item.key" 
+           class="flex justify-between py-2 border-b border-dotted border-gray-600 last:border-b-0" 
+           :class="getItemClasses(item.class)">
+        <span class="opacity-80 text-sm tracking-wide">{{ item.key }}:</span>
+        <span class="font-bold font-mono text-base tracking-wide">{{ item.value }}</span>
       </div>
     </div>
-    <div v-if="$slots.default" class="status-footer">
+    <div v-if="$slots.default" class="border-t border-dotted border-gray-600 px-4 py-3 text-xs opacity-70 bg-gray-950 leading-relaxed">
       <slot></slot>
     </div>
   </div>
 </template>
 
 <script setup>
+
 defineProps({
   title: {
     type: String,
@@ -38,68 +41,12 @@ defineProps({
     }
   }
 })
+
+function getItemClasses(itemClass) {
+  const classes = []
+  if (itemClass === 'warning') classes.push('text-yellow-400')
+  if (itemClass === 'danger') classes.push('text-red-400')
+  if (itemClass === 'success') classes.push('text-green-400')
+  return classes
+}
 </script>
-
-<style scoped>
-.status-display {
-  border: 1px solid #ffffff;
-  background: #111111;
-  font-family: 'Courier New', monospace;
-  color: #ffffff;
-}
-
-.status-header {
-  border-bottom: 1px solid #ffffff;
-  padding: 4px 8px;
-  background: #000000;
-}
-
-.status-title {
-  font-weight: bold;
-  font-size: 12px;
-}
-
-.status-subtitle {
-  float: right;
-  font-size: 10px;
-  opacity: 0.7;
-}
-
-.status-content {
-  padding: 8px;
-}
-
-.status-item {
-  display: flex;
-  justify-content: space-between;
-  margin: 2px 0;
-  font-size: 11px;
-}
-
-.status-key {
-  opacity: 0.8;
-}
-
-.status-value {
-  font-weight: bold;
-}
-
-.status-item.warning .status-value {
-  color: #ffff00;
-}
-
-.status-item.danger .status-value {
-  color: #ff0000;
-}
-
-.status-item.success .status-value {
-  color: #00ff00;
-}
-
-.status-footer {
-  border-top: 1px dotted #333333;
-  padding: 4px 8px;
-  font-size: 10px;
-  opacity: 0.7;
-}
-</style>

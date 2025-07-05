@@ -116,29 +116,37 @@ Generate a ${context.difficulty} difficulty ${context.missionType.replace('_', '
     };
   }
 
-  async callLLM(prompt, retryCount = 0) {
+  async callLLM(prompt, retryCount = 0, options = {}) {
     if (!this.llmConfig.isConfigured()) {
       throw new Error('No LLM configured for requests');
     }
 
     try {
       const llmConf = this.llmConfig.getConfig();
+      const requestBody = {
+        model: llmConf.model,
+        messages: prompt.messages,
+        max_tokens: this.config.maxTokens,
+        temperature: this.config.temperature,
+        stream: options.stream || false
+      };
+
       const response = await fetch(this.llmConfig.getEndpoint('/chat/completions'), {
         method: 'POST',
         headers: llmConf.headers,
-        body: JSON.stringify({
-          model: llmConf.model,
-          messages: prompt.messages,
-          max_tokens: this.config.maxTokens,
-          temperature: this.config.temperature,
-          stream: false
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
         throw new Error(`LLM API error: ${response.status} ${response.statusText}`);
       }
 
+      // Handle streaming response
+      if (options.stream && options.onChunk) {
+        return await this.handleStreamingResponse(response, options.onChunk);
+      }
+
+      // Handle regular response
       const data = await response.json();
       
       if (!data.choices || !data.choices[0] || !data.choices[0].message) {
@@ -156,6 +164,50 @@ Generate a ${context.difficulty} difficulty ${context.missionType.replace('_', '
         return this.callLLM(prompt, retryCount + 1);
       }
       throw error;
+    }
+  }
+
+  async handleStreamingResponse(response, onChunk) {
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let fullContent = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        
+        // Keep the last potentially incomplete line in the buffer
+        buffer = lines.pop() || '';
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') continue;
+            
+            try {
+              const parsed = JSON.parse(data);
+              const delta = parsed.choices?.[0]?.delta?.content;
+              
+              if (delta) {
+                fullContent += delta;
+                onChunk(delta, fullContent);
+              }
+            } catch (error) {
+              console.warn('Failed to parse streaming chunk:', error);
+            }
+          }
+        }
+      }
+      
+      return fullContent;
+    } finally {
+      reader.releaseLock();
     }
   }
 

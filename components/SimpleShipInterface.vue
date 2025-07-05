@@ -467,7 +467,7 @@ async function handleTravelDialog() {
     generationProgress.value = 'Generating ship AI recommendations...'
     currentDialog.value.progressText = generationProgress.value
     
-    // Generate LLM travel dialog with ship AI commentary
+    // Prepare for streaming
     const playerState = {
       playerId: props.playerId,
       shipId: props.shipId, 
@@ -478,24 +478,8 @@ async function handleTravelDialog() {
       maxFuel: maxFuel.value
     }
 
-    const response = await fetch('http://localhost:3666/api/dialog/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        actionType: 'travel',
-        playerState
-      })
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`)
-    }
-
-    const dialog = await response.json()
-    currentDialog.value = dialog
-    isGeneratingDialog.value = false
-    generationProgress.value = ''
-    addEvent(`> Navigation options generated`, 'success')
+    // Start streaming dialog generation
+    await startStreamingDialog('travel', playerState)
 
   } catch (error) {
     console.error('Travel dialog error:', error)
@@ -512,6 +496,93 @@ async function handleTravelDialog() {
     isGeneratingDialog.value = false
     generationProgress.value = ''
     addEvent(`> Navigation system offline`, 'danger')
+  }
+}
+
+async function startStreamingDialog(actionType, playerState) {
+  try {
+    // Create EventSource for Server-Sent Events
+    const eventSource = new EventSource(`http://localhost:3666/api/dialog/generate-stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ actionType, playerState })
+    });
+
+    // Unfortunately EventSource doesn't support POST with body
+    // Let's use fetch with streaming instead
+    const response = await fetch('http://localhost:3666/api/dialog/generate-stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ actionType, playerState })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    
+    // Show streaming dialog immediately
+    currentDialog.value = {
+      situation: '',
+      choices: [],
+      id: `${actionType}-streaming`,
+      isStreaming: true,
+      progressText: 'Initializing AI systems...'
+    };
+
+    let buffer = '';
+    
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      
+      // Keep the last potentially incomplete line in the buffer
+      buffer = lines.pop() || '';
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const data = line.slice(6);
+          if (data.trim() === '') continue;
+          
+          try {
+            const parsed = JSON.parse(data);
+            
+            if (parsed.type === 'chunk') {
+              // Update the streaming dialog with new content
+              if (parsed.dialog) {
+                currentDialog.value = {
+                  ...currentDialog.value,
+                  ...parsed.dialog,
+                  isStreaming: true,
+                  progressText: `Generating... ${parsed.fullContent.length} characters`
+                };
+              }
+            } else if (parsed.type === 'complete') {
+              // Final dialog is complete
+              currentDialog.value = parsed.dialog;
+              isGeneratingDialog.value = false;
+              generationProgress.value = '';
+              addEvent(`> ${actionType} options generated via streaming`, 'success');
+              break;
+            } else if (parsed.type === 'error') {
+              throw new Error(parsed.error);
+            }
+          } catch (error) {
+            console.warn('Failed to parse streaming data:', error);
+          }
+        }
+      }
+    }
+    
+  } catch (error) {
+    console.error('Streaming dialog error:', error);
+    throw error;
   }
 }
 
