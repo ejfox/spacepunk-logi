@@ -20,6 +20,16 @@ const wss = new WebSocketServer({ server });
 let currentTick = 1;
 const tickInterval = 30000; // 30 seconds
 
+// In-memory storage for active ships and players
+const activeShips = new Map(); // shipId -> ship data
+const playerData = new Map(); // playerId -> player data
+
+// Resource decay constants
+const FUEL_DECAY_PER_TICK = 1;
+const CREW_SALARY_PER_MEMBER = 10;
+const LOW_FUEL_THRESHOLD = 20;
+const BANKRUPTCY_THRESHOLD = 100;
+
 // Connected clients
 const clients = new Set();
 
@@ -58,14 +68,89 @@ function broadcast(message) {
   });
 }
 
+// Resource decay functions
+function processResourceDecay() {
+  const warnings = [];
+  
+  // Process each active ship
+  activeShips.forEach((ship, shipId) => {
+    const playerId = ship.player_id;
+    let player = playerData.get(playerId);
+    
+    if (!player) {
+      player = { credits: 1000, id: playerId }; // Default player data
+      playerData.set(playerId, player);
+    }
+    
+    // Calculate crew count (for now, use a simple crew count)
+    const crewCount = ship.crew_count || 0;
+    
+    // Apply fuel decay
+    const oldFuel = ship.fuel_current;
+    ship.fuel_current = Math.max(0, ship.fuel_current - FUEL_DECAY_PER_TICK);
+    
+    // Apply crew salary costs
+    const salaryCost = crewCount * CREW_SALARY_PER_MEMBER;
+    const oldCredits = player.credits;
+    player.credits = Math.max(0, player.credits - salaryCost);
+    
+    // Check for warnings
+    if (ship.fuel_current < LOW_FUEL_THRESHOLD && oldFuel >= LOW_FUEL_THRESHOLD) {
+      warnings.push({
+        type: 'low_fuel',
+        shipId: shipId,
+        playerId: playerId,
+        fuel: ship.fuel_current,
+        message: `⚠️ LOW FUEL WARNING: ${ship.name} has only ${ship.fuel_current} fuel remaining!`
+      });
+    }
+    
+    if (player.credits < BANKRUPTCY_THRESHOLD && oldCredits >= BANKRUPTCY_THRESHOLD) {
+      warnings.push({
+        type: 'bankruptcy_risk',
+        shipId: shipId,
+        playerId: playerId,
+        credits: player.credits,
+        message: `💰 BANKRUPTCY WARNING: Captain has only ${player.credits} credits remaining!`
+      });
+    }
+    
+    // Store updated data
+    activeShips.set(shipId, ship);
+    playerData.set(playerId, player);
+  });
+  
+  return warnings;
+}
+
 // Tick system
 setInterval(() => {
   currentTick++;
+  
+  // Process resource decay
+  const warnings = processResourceDecay();
+  
+  // Broadcast tick update with resource changes
   broadcast({
     type: 'tick:update',
-    data: { tick: currentTick }
+    data: { 
+      tick: currentTick,
+      resourceUpdates: Array.from(activeShips.entries()).map(([shipId, ship]) => ({
+        shipId,
+        playerId: ship.player_id,
+        fuel: ship.fuel_current,
+        credits: playerData.get(ship.player_id)?.credits || 0
+      })),
+      warnings: warnings
+    }
   });
-  console.log(`🕐 Tick ${currentTick}`);
+  
+  // Log warnings to console
+  warnings.forEach(warning => {
+    console.log(`⚠️  ${warning.message}`);
+  });
+  
+  console.log(`🕐 Tick ${currentTick} - ${activeShips.size} active ships processed`);
 }, tickInterval);
 
 // API Routes
@@ -85,8 +170,22 @@ app.post('/api/player', (req, res) => {
     id: playerId,
     username: req.body.username || `CAPTAIN-${playerId.toUpperCase()}`,
     deaths: 0,
+    credits: 1000,
+    reputation: {
+      corporate: 0,
+      pirate: 0,
+      independent: 0
+    },
+    stats: {
+      total_jumps: 0,
+      total_trades: 0,
+      total_missions: 0
+    },
     created_at: new Date().toISOString()
   };
+  
+  // Store in player data for resource decay processing
+  playerData.set(playerId, player);
   
   console.log('👤 Created player:', player);
   res.json({ player, success: true });
@@ -106,9 +205,13 @@ app.post('/api/ship', (req, res) => {
     fuel_max: 100,
     cargo_used: 0,
     cargo_max: 100,
+    crew_count: 0,
     status: 'docked',
     created_at: new Date().toISOString()
   };
+  
+  // Store in active ships for resource decay processing
+  activeShips.set(shipId, ship);
   
   console.log('🚀 Created ship:', ship);
   res.json({ ship, success: true });
@@ -116,15 +219,40 @@ app.post('/api/ship', (req, res) => {
 
 // Player data
 app.get('/api/player/:playerId', (req, res) => {
-  res.json({
-    credits: 1000,
-    reputation: {},
-    stats: {
-      total_jumps: 0,
-      total_trades: 0,
-      total_missions: 0
-    }
-  });
+  const playerId = req.params.playerId;
+  let player = playerData.get(playerId);
+  
+  if (!player) {
+    player = { 
+      id: playerId,
+      credits: 1000,
+      reputation: {
+        corporate: 0,
+        pirate: 0,
+        independent: 0
+      },
+      stats: {
+        total_jumps: 0,
+        total_trades: 0,
+        total_missions: 0
+      }
+    };
+    playerData.set(playerId, player);
+  }
+  
+  res.json(player);
+});
+
+// Ship data endpoint
+app.get('/api/ship/:shipId', (req, res) => {
+  const shipId = req.params.shipId;
+  const ship = activeShips.get(shipId);
+  
+  if (!ship) {
+    return res.status(404).json({ error: 'Ship not found' });
+  }
+  
+  res.json(ship);
 });
 
 // Crew endpoint (empty for now)
@@ -133,7 +261,33 @@ app.get('/api/crew/available', (req, res) => {
 });
 
 app.get('/api/ship/:shipId/crew', (req, res) => {
-  res.json([]);
+  const shipId = req.params.shipId;
+  const ship = activeShips.get(shipId);
+  
+  if (!ship) {
+    return res.status(404).json({ error: 'Ship not found' });
+  }
+  
+  res.json({
+    crew_count: ship.crew_count || 0,
+    crew_members: []
+  });
+});
+
+// Add crew member (simulated)
+app.post('/api/ship/:shipId/crew', (req, res) => {
+  const shipId = req.params.shipId;
+  const ship = activeShips.get(shipId);
+  
+  if (!ship) {
+    return res.status(404).json({ error: 'Ship not found' });
+  }
+  
+  ship.crew_count = (ship.crew_count || 0) + 1;
+  activeShips.set(shipId, ship);
+  
+  console.log(`👥 Added crew member to ship ${shipId}, total crew: ${ship.crew_count}`);
+  res.json({ success: true, crew_count: ship.crew_count });
 });
 
 // Missions endpoint
@@ -162,6 +316,127 @@ app.get('/api/training/stats', (req, res) => {
     total_xp_gained: 0
   });
 });
+
+// Faction reputation endpoint
+app.post('/api/player/:playerId/reputation', (req, res) => {
+  const playerId = req.params.playerId;
+  const { reputationChanges } = req.body;
+  
+  let player = playerData.get(playerId);
+  if (!player) {
+    return res.status(404).json({ error: 'Player not found' });
+  }
+  
+  // Apply reputation changes
+  if (reputationChanges) {
+    Object.keys(reputationChanges).forEach(faction => {
+      const change = reputationChanges[faction];
+      if (typeof change === 'number') {
+        player.reputation[faction] = Math.max(-100, Math.min(100, (player.reputation[faction] || 0) + change));
+      }
+    });
+  }
+  
+  playerData.set(playerId, player);
+  
+  console.log(`📊 Reputation updated for ${playerId}:`, player.reputation);
+  res.json({ reputation: player.reputation, success: true });
+});
+
+// Enhanced dialog generation with faction reputation consideration
+function generateFactionSpecificChoices(playerReputation) {
+  const corporateRep = playerReputation.corporate || 0;
+  const pirateRep = playerReputation.pirate || 0;
+  const independentRep = playerReputation.independent || 0;
+  
+  const choices = [];
+  
+  // Base choices always available
+  choices.push({
+    id: 'basic_trade',
+    text: 'Accept basic courier contract',
+    risk: 'low',
+    faction: 'neutral',
+    consequences: { 
+      fuel: -5, 
+      credits: 150, 
+      heat: 0,
+      reputation: { corporate: 2, pirate: 0, independent: 1 },
+      narrative: 'A simple delivery job. Nothing fancy, but it pays the bills.'
+    }
+  });
+  
+  // Corporate-specific choices (unlocked at 50+ corporate rep)
+  if (corporateRep >= 50) {
+    choices.push({
+      id: 'corporate_contract',
+      text: '[CORPORATE ACCESS] Executive priority shipment',
+      risk: 'low',
+      faction: 'corporate',
+      consequences: { 
+        fuel: -15, 
+        credits: 2000, 
+        heat: -5,
+        reputation: { corporate: 15, pirate: -10, independent: 0 },
+        narrative: 'Corporate brass trusts you with their most sensitive cargo. The pay is excellent and security escorts ensure safe passage.'
+      }
+    });
+  }
+  
+  // Pirate-specific choices (unlocked at 50+ pirate rep)
+  if (pirateRep >= 50) {
+    choices.push({
+      id: 'raid_opportunity',
+      text: '[PIRATE ACCESS] Join coordinated raid on corporate convoy',
+      risk: 'extreme',
+      faction: 'pirate',
+      consequences: { 
+        fuel: -25, 
+        credits: 5000, 
+        heat: 50,
+        reputation: { corporate: -25, pirate: 25, independent: -10 },
+        narrative: 'The pirates trust you enough to share their biggest score. Corporate security will remember this, but the payout is massive.'
+      }
+    });
+  }
+  
+  // Independent-specific choices (unlocked at 50+ independent rep)
+  if (independentRep >= 50) {
+    choices.push({
+      id: 'humanitarian_mission',
+      text: '[INDEPENDENT ACCESS] Emergency colony relief mission',
+      risk: 'medium',
+      faction: 'independent',
+      consequences: { 
+        fuel: -20, 
+        credits: -200,
+        heat: -10,
+        crew: 2,
+        morale: 30,
+        reputation: { corporate: 5, pirate: 0, independent: 20 },
+        narrative: 'The independent colonies remember your past help. They offer you skilled refugees as crew members in exchange for transport.'
+      }
+    });
+  }
+  
+  // Block faction choices if reputation is too negative
+  if (corporateRep <= -25) {
+    // Remove corporate-friendly options
+    return choices.filter(choice => choice.faction !== 'corporate');
+  }
+  
+  if (pirateRep <= -25) {
+    // Remove pirate options
+    return choices.filter(choice => choice.faction !== 'pirate');
+  }
+  
+  if (independentRep <= -25) {
+    // Remove independent options
+    return choices.filter(choice => choice.faction !== 'independent');
+  }
+  
+  return choices;
+}
 
 app.get('/api/ship/:shipId/training', (req, res) => {
   res.json([]);
@@ -218,13 +493,37 @@ app.post('/api/dialog/generate-stream', async (req, res) => {
   
   console.log('📡 Starting simulated streaming...');
   
+  // Actual story content to stream
+  const storyParts = [
+    "You drift through the void between stars. ",
+    "The silence of empty space presses against your ship's hull. ",
+    "Navigation sensors detect faint signals from nearby systems. ",
+    "Your fuel reserves are adequate, but crew quarters remain empty. ",
+    "The ship's AI hums quietly, awaiting your command. ",
+    "Trade routes beckon from distant stations. ",
+    "Corporate transmissions crackle through the comm system. ",
+    "Your captain's quarters feel unnaturally quiet. ",
+    "The cargo bay echoes with possibility. ",
+    "What will you do next?"
+  ];
+  
+  let partIndex = 0;
+  
   // Start immediately after a short delay
   setTimeout(() => {
     console.log('📡 FIRST CHUNK STARTING...');
     const streamInterval = setInterval(() => {
-    tokens += Math.floor(Math.random() * 5) + 1;
-    const newChunk = `Token ${tokens}... `;
-    content += newChunk;
+    let newChunk = '';
+    if (partIndex >= storyParts.length) {
+      // We've sent all story parts, complete the stream
+      tokens = maxTokens;
+      newChunk = '[STREAM COMPLETE]';
+    } else {
+      newChunk = storyParts[partIndex];
+      content += newChunk;
+      tokens += Math.floor(newChunk.length / 4); // Rough token estimation
+      partIndex++;
+    }
     
     console.log(`📤 Sending chunk: "${newChunk}" (${tokens}/${maxTokens})`);
     
@@ -254,32 +553,30 @@ app.post('/api/dialog/generate-stream', async (req, res) => {
       
       console.log('✅ Streaming complete, sending final dialog');
       
-      // Send final dialog
+      // Get player data for reputation-based choices
+      const playerIdFromBody = req.body.playerState?.playerId;
+      let playerReputation = { corporate: 0, pirate: 0, independent: 0 };
+      
+      if (playerIdFromBody) {
+        const player = playerData.get(playerIdFromBody);
+        if (player && player.reputation) {
+          playerReputation = player.reputation;
+        }
+      }
+      
+      console.log('📊 Player reputation for choices:', playerReputation);
+      
+      // Generate faction-specific choices based on reputation
+      const factionChoices = generateFactionSpecificChoices(playerReputation);
+      
+      // Send final dialog with reputation-based choices
       res.write(`data: ${JSON.stringify({
         type: 'complete',
         dialog: {
-          situation: 'MINIMAL SERVER TEST: You drift through the void, ship systems humming quietly. The absence of crew makes every sound echo through empty corridors.',
-          choices: [
-            {
-              id: 'explore',
-              text: 'Scan nearby systems',
-              risk: 'low',
-              consequences: { fuel: -5, credits: 0, heat: 0 }
-            },
-            {
-              id: 'dock',
-              text: 'Return to station',
-              risk: 'none',
-              consequences: { fuel: -2, credits: 0, heat: 0 }
-            },
-            {
-              id: 'wait',
-              text: 'Drift and conserve fuel',
-              risk: 'low',
-              consequences: { fuel: 0, credits: 0, heat: -1 }
-            }
-          ],
-          id: 'minimal-test-complete'
+          situation: content,
+          choices: factionChoices,
+          id: 'minimal-test-complete',
+          playerReputation: playerReputation
         }
       })}\n\n`);
       

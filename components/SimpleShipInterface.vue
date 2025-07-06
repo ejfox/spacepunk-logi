@@ -17,10 +17,9 @@
         <div class="text-gray-400">SEC: {{ getSecurityLevel() }}</div>
       </div>
       <div class="border border-white p-2 bg-gray-900">
-        <div :class="wsStatus === 'OPEN' ? 'text-green-400' : 'text-red-400'">
-          CONN: {{ connectionStatus }}
-        </div>
-        <div class="text-gray-400">FPS: {{ Math.round(fps) }}</div>
+        <div class="text-blue-400">CORP: {{ getReputationDisplay('corporate') }}</div>
+        <div class="text-red-400">PIRATE: {{ getReputationDisplay('pirate') }}</div>
+        <div class="text-green-400">INDEP: {{ getReputationDisplay('independent') }}</div>
       </div>
     </div>
 
@@ -48,9 +47,17 @@
     <!-- BOTTOM STATUS BAR -->
     <div class="border border-white p-3 bg-gray-950">
       <div class="text-green-400 text-xs mb-1">> SYSTEM STATUS</div>
-      <div class="text-sm">
-        <div v-if="currentHelpText" class="text-white">{{ currentHelpText }}</div>
-        <div v-else class="text-gray-400">Ready for operations. Use hotkeys [1-7] or click actions.</div>
+      <div class="text-sm grid grid-cols-[1fr_auto] gap-4">
+        <div>
+          <div v-if="currentHelpText" class="text-white">{{ currentHelpText }}</div>
+          <div v-else class="text-gray-400">Ready for operations. Use hotkeys [1-7] or click actions.</div>
+        </div>
+        <div class="text-xs">
+          <div :class="wsStatus === 'OPEN' ? 'text-green-400' : 'text-red-400'">
+            CONN: {{ connectionStatus }}
+          </div>
+          <div class="text-gray-400">FPS: {{ Math.round(fps) }}</div>
+        </div>
       </div>
     </div>
 
@@ -101,11 +108,11 @@ const fuel = ref(100)
 const maxFuel = ref(100)
 const credits = ref(1000)
 
-// Player reputation system
-const playerReputation = ref({
-  corporate_standing: 50,
-  underground_connections: 30,
-  equipment_reliability: 75
+// Faction reputation system
+const factionReputation = ref({
+  corporate: 0,
+  pirate: 0,
+  independent: 0
 })
 
 // Safeguard: Reset credits if they become NaN
@@ -181,6 +188,13 @@ function getSecurityLevel() {
   return 'NORMAL'
 }
 
+function getReputationDisplay(faction) {
+  const rep = factionReputation.value[faction] || 0
+  if (rep >= 50) return `+${rep}` // High reputation shows as positive 
+  if (rep <= -25) return `${rep}` // Negative reputation shows as red
+  return `${rep}` // Neutral reputation
+}
+
 function addEvent(message, type = 'default') {
   events.value.unshift({
     id: Date.now() + Math.random(),
@@ -211,6 +225,92 @@ function clearHelpText() {
   currentHelpText.value = ''
 }
 
+// INSTANT GRATIFICATION: Visual and audio feedback functions
+function showResourceAnimation(type, amount) {
+  // Create floating +/- text animation
+  const container = document.querySelector('.resource-animations')
+  if (!container) {
+    // Create container if it doesn't exist
+    const animContainer = document.createElement('div')
+    animContainer.className = 'resource-animations'
+    animContainer.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999;'
+    document.body.appendChild(animContainer)
+  }
+  
+  // Create floating text element
+  const floatingText = document.createElement('div')
+  floatingText.className = 'floating-resource'
+  floatingText.style.cssText = `
+    position: absolute;
+    font-family: monospace;
+    font-size: 24px;
+    font-weight: bold;
+    pointer-events: none;
+    animation: floatUp 2s ease-out forwards;
+  `
+  
+  // Position based on resource type
+  let targetElement
+  if (type === 'credits') {
+    targetElement = document.querySelector('.text-yellow-400')
+    floatingText.style.color = amount > 0 ? '#4ade80' : '#f87171'
+  } else if (type === 'fuel') {
+    targetElement = document.querySelector('.text-green-400')
+    floatingText.style.color = amount > 0 ? '#4ade80' : '#f87171'
+  } else if (type === 'heat') {
+    targetElement = document.querySelector('[class*="HEAT"]')?.parentElement
+    floatingText.style.color = amount > 0 ? '#f87171' : '#4ade80' // Heat is bad when it goes up
+  }
+  
+  if (targetElement) {
+    const rect = targetElement.getBoundingClientRect()
+    floatingText.style.left = `${rect.left + rect.width / 2}px`
+    floatingText.style.top = `${rect.top}px`
+  } else {
+    // Fallback position
+    floatingText.style.left = '50%'
+    floatingText.style.top = '100px'
+  }
+  
+  floatingText.textContent = `${amount > 0 ? '+' : ''}${amount} ${type.toUpperCase()}`
+  
+  const animationsContainer = document.querySelector('.resource-animations')
+  if (animationsContainer) {
+    animationsContainer.appendChild(floatingText)
+    
+    // Remove after animation
+    setTimeout(() => {
+      floatingText.remove()
+    }, 2000)
+  }
+  
+  // Also trigger flash animation on the actual stat display
+  if (targetElement) {
+    targetElement.classList.add('stat-flash')
+    setTimeout(() => {
+      targetElement.classList.remove('stat-flash')
+    }, 500)
+  }
+}
+
+function playSound(type) {
+  // Placeholder for sound effects - logs for now, easy to replace with actual audio later
+  const sounds = {
+    success: '♪ DING! (success sound)',
+    loss: '♪ BUZZ! (loss sound)',
+    neutral: '♪ BLIP! (neutral sound)',
+    warning: '♪ ALARM! (warning sound)',
+    danger: '♪ SIREN! (danger sound)'
+  }
+  
+  console.log(`🔊 Sound Effect: ${sounds[type] || sounds.neutral}`)
+  
+  // TODO: In the future, replace with actual audio playback:
+  // const audio = new Audio(`/sounds/${type}.mp3`)
+  // audio.volume = 0.3
+  // audio.play().catch(e => console.log('Audio play failed:', e))
+}
+
 function handleActionHover(action) {
   if (action.tooltip?.description) {
     updateHelpText(`${action.tooltip.title || action.label}: ${action.tooltip.description}`)
@@ -228,8 +328,8 @@ async function handleAction(actionId) {
   if (isProcessing.value) return
   
   // Check if this action should trigger a dialog
-  const streamingActions = ['explore', 'travel']
-  const dialogActions = ['spy', 'trade']
+  const streamingActions = ['explore', 'travel', 'spy']
+  const dialogActions = ['trade']
   
   if (streamingActions.includes(actionId)) {
     // Use streaming dialog for enhanced actions
@@ -237,6 +337,8 @@ async function handleAction(actionId) {
       await handleExploreDialog()
     } else if (actionId === 'travel') {
       await handleTravelDialog()
+    } else if (actionId === 'spy') {
+      await handleSpyDialog()
     }
   } else if (dialogActions.includes(actionId)) {
     // Generate dialog for complex actions (non-streaming)
@@ -338,6 +440,11 @@ function handleDialogChoice(choiceData) {
   if (choice.consequences) {
     if (choice.consequences.fuel) {
       const fuelChange = parseInt(choice.consequences.fuel)
+      // INSTANT GRATIFICATION: Animate fuel changes
+      if (fuelChange !== 0) {
+        showResourceAnimation('fuel', fuelChange)
+        playSound(fuelChange > 0 ? 'success' : 'loss')
+      }
       fuel.value = Math.max(0, Math.min(maxFuel.value, fuel.value + fuelChange))
     }
     
@@ -345,14 +452,11 @@ function handleDialogChoice(choiceData) {
       const creditsStr = choice.consequences.credits.toString()
       let creditsChange = 0
       
-      console.log('Processing credits:', creditsStr) // Debug
-      
       // Handle range like "+50-200" or specific like "+150"
       if (creditsStr.includes('-') && !creditsStr.startsWith('-')) {
-        // This is a range like "+50-200", not a negative number
         const parts = creditsStr.split('-')
         if (parts.length === 2) {
-          const minStr = parts[0].replace(/[+]/g, '') // Remove +
+          const minStr = parts[0].replace(/[+]/g, '')
           const maxStr = parts[1]
           const min = parseInt(minStr)
           const max = parseInt(maxStr)
@@ -360,31 +464,57 @@ function handleDialogChoice(choiceData) {
           if (!isNaN(min) && !isNaN(max)) {
             creditsChange = Math.floor(Math.random() * (max - min + 1)) + min
             if (creditsStr.startsWith('-')) creditsChange = -creditsChange
-          } else {
-            console.error('Failed to parse credits range:', creditsStr, 'min:', min, 'max:', max)
-            creditsChange = 0
           }
         }
       } else {
-        // Single value like "+150" or "-50"
         creditsChange = parseInt(creditsStr)
-        if (isNaN(creditsChange)) {
-          console.error('Failed to parse credits value:', creditsStr)
-          creditsChange = 0
-        }
+        if (isNaN(creditsChange)) creditsChange = 0
       }
       
-      console.log('Credits change:', creditsChange) // Debug
-      ensureValidCredits() // Safety check
+      // INSTANT GRATIFICATION: Animate credit changes
+      if (creditsChange !== 0) {
+        showResourceAnimation('credits', creditsChange)
+        playSound(creditsChange > 0 ? 'success' : 'loss')
+      }
+      
+      ensureValidCredits()
       const newCredits = Math.max(0, credits.value + creditsChange)
-      console.log('Credits:', credits.value, '->', newCredits) // Debug
       credits.value = newCredits
-      ensureValidCredits() // Safety check after update
+      ensureValidCredits()
     }
     
     if (choice.consequences.heat) {
       const heatChange = parseInt(choice.consequences.heat)
+      // INSTANT GRATIFICATION: Animate heat changes
+      if (heatChange !== 0) {
+        showResourceAnimation('heat', heatChange)
+        playSound(heatChange > 0 ? 'warning' : 'success')
+      }
       heatLevel.value = Math.max(0, Math.min(100, heatLevel.value + heatChange))
+    }
+    
+    // Handle faction reputation changes
+    if (choice.consequences.reputation && typeof choice.consequences.reputation === 'object') {
+      Object.keys(choice.consequences.reputation).forEach(faction => {
+        const change = choice.consequences.reputation[faction]
+        if (typeof change === 'number' && change !== 0) {
+          const oldRep = factionReputation.value[faction] || 0
+          const newRep = Math.max(-100, Math.min(100, oldRep + change))
+          factionReputation.value[faction] = newRep
+          
+          // Show reputation change notification
+          addEvent(`> FACTION REP: ${faction.toUpperCase()} ${change > 0 ? '+' : ''}${change} (${newRep})`, 
+                   change > 0 ? 'success' : 'warning')
+        }
+      })
+      
+      // Send reputation changes to server
+      updateServerReputation(choice.consequences.reputation)
+    }
+    
+    if (choice.consequences.location) {
+      currentLocation.value = choice.consequences.location
+      addEvent(`> LOCATION UPDATED: Now at ${choice.consequences.location}`, 'success')
     }
   }
   
@@ -423,10 +553,19 @@ async function handleRefuel() {
   const totalCost = cost * refuelAmount
   
   if (credits.value >= totalCost && refuelAmount > 0) {
+    // INSTANT GRATIFICATION: Animate credit loss
+    showResourceAnimation('credits', -totalCost)
+    playSound('loss')
     credits.value -= totalCost
+    
+    // INSTANT GRATIFICATION: Animate fuel gain
+    showResourceAnimation('fuel', refuelAmount)
+    playSound('success')
     fuel.value += refuelAmount
+    
     addEvent(`> Refueled ${refuelAmount} units for ${totalCost} CR`, 'success')
   } else {
+    playSound('warning')
     addEvent(`> Refuel failed: insufficient credits or fuel full`, 'warning')
   }
 }
@@ -435,9 +574,15 @@ async function handleTrade() {
   // Simple random trade event
   const profit = Math.floor(Math.random() * 200) - 50
   if (profit > 0) {
+    // INSTANT GRATIFICATION: Animate credit gain
+    showResourceAnimation('credits', profit)
+    playSound('success')
     credits.value += profit
     addEvent(`> Trade successful: +${profit} CR`, 'success')
   } else {
+    // INSTANT GRATIFICATION: Animate credit loss
+    showResourceAnimation('credits', profit)
+    playSound('loss')
     credits.value += profit // negative
     addEvent(`> Trade loss: ${profit} CR`, 'warning')
   }
@@ -509,15 +654,7 @@ async function handleTravelDialog() {
 
 async function startStreamingDialog(actionType, playerState) {
   try {
-    // Create EventSource for Server-Sent Events
-    const eventSource = new EventSource(`http://localhost:3666/api/dialog/generate-stream`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ actionType, playerState })
-    });
-
-    // Unfortunately EventSource doesn't support POST with body
-    // Let's use fetch with streaming instead
+    // Use fetch with streaming for POST requests with body
     const response = await fetch('http://localhost:3666/api/dialog/generate-stream', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -525,19 +662,45 @@ async function startStreamingDialog(actionType, playerState) {
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      // Show BIG OBVIOUS ERROR in the UI
+      currentDialog.value = {
+        situation: `🚨 STREAMING ERROR ${response.status} 🚨`,
+        choices: [{
+          id: "streaming_error",
+          text: `BACKEND ERROR: ${response.status} ${response.statusText}`,
+          risk: "critical",
+          consequences: { 
+            narrative: `Streaming endpoint failed. Check backend logs. URL: /api/dialog/generate-stream` 
+          }
+        }],
+        id: "streaming-error",
+        isLoading: false,
+        isStreaming: false
+      }
+      addEvent(`> 🚨 STREAMING FAILED: ${response.status} ${response.statusText}`, 'danger')
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     
-    // Show streaming dialog immediately
+    // Show streaming dialog immediately with proper initial state
     currentDialog.value = {
       situation: '',
       choices: [],
       id: `${actionType}-streaming`,
       isStreaming: true,
-      progressText: 'Initializing AI systems...'
+      isLoading: true,
+      progressText: 'Initializing AI systems...',
+      startTime: Date.now(),
+      maxTokens: 1000,
+      tokensReceived: 0,
+      streamingContent: '',
+      queueStatus: {
+        position: null,
+        queueLength: null,
+        priority: 'high'
+      }
     };
 
     let buffer = '';
@@ -561,14 +724,25 @@ async function startStreamingDialog(actionType, playerState) {
           try {
             const parsed = JSON.parse(data);
             
-            if (parsed.type === 'chunk') {
+            if (parsed.type === 'queue_status') {
+              // Update queue status
+              currentDialog.value = {
+                ...currentDialog.value,
+                queueStatus: parsed.queueStatus,
+                progressText: `Queue position: ${parsed.queueStatus.position}`
+              };
+            } else if (parsed.type === 'chunk') {
               // Update the streaming dialog with new content
               if (parsed.dialog) {
                 currentDialog.value = {
                   ...currentDialog.value,
                   ...parsed.dialog,
                   isStreaming: true,
-                  progressText: `Generating... ${parsed.fullContent.length} characters`
+                  isLoading: false,
+                  tokensReceived: parsed.tokensReceived,
+                  maxTokens: parsed.maxTokens,
+                  streamingContent: parsed.fullContent,
+                  progressText: `Streaming... ${parsed.tokensReceived}/${parsed.maxTokens} tokens`
                 };
               }
             } else if (parsed.type === 'complete') {
@@ -590,6 +764,26 @@ async function startStreamingDialog(actionType, playerState) {
     
   } catch (error) {
     console.error('Streaming dialog error:', error);
+    
+    // Show BIG OBVIOUS ERROR in the UI
+    currentDialog.value = {
+      situation: `🚨 STREAMING SYSTEM FAILURE 🚨`,
+      choices: [{
+        id: "streaming_system_error",
+        text: `SYSTEM ERROR: ${error.message}`,
+        risk: "critical",
+        consequences: { 
+          narrative: `Streaming failed completely. Error: ${error.message}. Check browser console and backend logs.` 
+        }
+      }],
+      id: "streaming-system-error",
+      isLoading: false,
+      isStreaming: false
+    }
+    addEvent(`> 🚨 STREAMING SYSTEM ERROR: ${error.message}`, 'danger')
+    isGeneratingDialog.value = false
+    generationProgress.value = ''
+    
     throw error;
   }
 }
@@ -677,30 +871,103 @@ async function handleExploreDialog() {
   }
 }
 
+async function handleSpyDialog() {
+  pendingAction.value = 'spy'
+  isGeneratingDialog.value = true
+  showDialog.value = true
+  
+  // Show loading dialog
+  currentDialog.value = {
+    situation: "🕵️ INITIATING COVERT OPERATIONS...",
+    choices: [],
+    id: "loading",
+    isLoading: true,
+    progressText: ''
+  }
+  
+  addEvent(`> Activating surveillance protocols...`, 'info')
+  
+  try {
+    generationProgress.value = 'Analyzing local security networks...'
+    currentDialog.value.progressText = generationProgress.value
+    await new Promise(resolve => setTimeout(resolve, 400))
+    
+    generationProgress.value = 'Scanning for intelligence opportunities...'
+    currentDialog.value.progressText = generationProgress.value
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
+    generationProgress.value = 'Generating espionage options...'
+    currentDialog.value.progressText = generationProgress.value
+    
+    // Prepare for streaming
+    const playerState = {
+      playerId: props.playerId,
+      shipId: props.shipId, 
+      fuel: fuel.value,
+      credits: credits.value,
+      heat: heatLevel.value,
+      location: currentLocation.value,
+      maxFuel: maxFuel.value
+    }
+
+    // Start streaming dialog generation (fallback to regular for now)
+    try {
+      await startStreamingDialog('spy', playerState)
+    } catch (streamError) {
+      console.warn('Streaming failed, falling back to regular dialog:', streamError)
+      // Fallback to regular dialog generation
+      const response = await fetch('http://localhost:3666/api/dialog/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          actionType: 'spy',
+          playerState
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      const dialog = await response.json()
+      currentDialog.value = dialog
+      isGeneratingDialog.value = false
+      generationProgress.value = ''
+      addEvent(`> Espionage options generated`, 'success')
+    }
+
+  } catch (error) {
+    console.error('Spy dialog error:', error)
+    currentDialog.value = {
+      situation: "🚨 SURVEILLANCE SYSTEMS COMPROMISED 🚨",
+      choices: [{
+        id: "spy_error",
+        text: `ERROR: ${error.message}`,
+        risk: "critical",
+        consequences: { narrative: "Start LM Studio on port 1234 for dynamic espionage content" }
+      }],
+      id: "spy-error"
+    }
+    isGeneratingDialog.value = false
+    generationProgress.value = ''
+    addEvent(`> Espionage systems offline`, 'danger')
+  }
+}
+
 async function handleSpy() {
-  // Spy actions always increase heat but can yield valuable intel
-  const heatIncrease = Math.floor(Math.random() * 20) + 10
-  heatLevel.value = Math.min(100, heatLevel.value + heatIncrease)
-  
-  const outcomes = [
-    { msg: '> Intercepted corporate communications: +300 CR', type: 'success', credits: 300 },
-    { msg: '> Gathered market intelligence: +200 CR', type: 'success', credits: 200 },
-    { msg: '> Copied security protocols: +250 CR', type: 'success', credits: 250 },
-    { msg: '> Surveillance detected - security alert!', type: 'danger', heat: 20 },
-    { msg: '> Counter-intelligence sweep active', type: 'warning', heat: 15 }
-  ]
-  
-  const outcome = outcomes[Math.floor(Math.random() * outcomes.length)]
-  addEvent(outcome.msg, outcome.type)
-  
-  if (outcome.credits) credits.value += outcome.credits
-  if (outcome.heat) heatLevel.value = Math.min(100, heatLevel.value + outcome.heat)
-  
-  addEvent(`> Heat level increased: +${heatIncrease}`, 'warning')
+  // Legacy fallback - should not be called anymore since spy uses dialog
+  console.warn('handleSpy() called - spy should use handleSpyDialog() instead')
+  await handleSpyDialog()
 }
 
 async function handleWait() {
   // Waiting lets events happen and slowly reduces heat
+  const heatReduction = Math.min(5, heatLevel.value)
+  if (heatReduction > 0) {
+    // INSTANT GRATIFICATION: Animate heat reduction
+    showResourceAnimation('heat', -heatReduction)
+    playSound('success')
+  }
   heatLevel.value = Math.max(0, heatLevel.value - 5)
   
   // Random events can occur while waiting
@@ -772,28 +1039,40 @@ function applyCascadingEffect(cascadeEffect) {
   }
 }
 
-function updateReputation(choiceId, risk) {
-  // Corporate-friendly choices improve corporate standing
-  if (['report', 'withdraw', 'hail'].includes(choiceId)) {
-    playerReputation.value.corporate_standing += 5
-    playerReputation.value.underground_connections -= 2
+async function updateServerReputation(reputationChanges) {
+  try {
+    const response = await fetch(`http://localhost:3666/api/player/${props.playerId}/reputation`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ reputationChanges })
+    })
+    
+    if (response.ok) {
+      const result = await response.json()
+      console.log('📊 Server reputation updated:', result.reputation)
+    } else {
+      console.warn('Failed to update server reputation:', response.status)
+    }
+  } catch (error) {
+    console.error('Error updating server reputation:', error)
   }
-  
-  // Aggressive/illegal choices improve underground connections
-  if (['decrypt', 'aggressive', 'accelerate'].includes(choiceId)) {
-    playerReputation.value.underground_connections += 8
-    playerReputation.value.corporate_standing -= 3
+}
+
+async function loadPlayerReputation() {
+  try {
+    const response = await fetch(`http://localhost:3666/api/player/${props.playerId}`)
+    if (response.ok) {
+      const player = await response.json()
+      if (player.reputation) {
+        factionReputation.value = { ...player.reputation }
+        console.log('📊 Loaded player reputation:', factionReputation.value)
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to load player reputation:', error)
   }
-  
-  // High-risk choices can damage equipment reliability
-  if (risk === 'high' || risk === 'extreme') {
-    playerReputation.value.equipment_reliability -= Math.floor(Math.random() * 10) + 5
-  }
-  
-  // Clamp values
-  Object.keys(playerReputation.value).forEach(key => {
-    playerReputation.value[key] = Math.max(0, Math.min(100, playerReputation.value[key]))
-  })
 }
 
 // REPUTATION DISPLAY in status
@@ -970,9 +1249,60 @@ const connectionStatus = computed(() => {
 })
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   addEvent('> Ship systems online', 'success')
   addEvent('> Welcome aboard, Captain', 'info')
   addEvent(`> Performance monitor: ${gameQuality.value.toUpperCase()} mode`, 'info')
+  
+  // Load player reputation from server
+  if (props.playerId) {
+    await loadPlayerReputation()
+    addEvent('> Faction standings loaded', 'info')
+  }
 })
 </script>
+
+<style>
+/* INSTANT GRATIFICATION: CSS Animations for stat changes */
+@keyframes floatUp {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-30px) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-60px) scale(0.8);
+  }
+}
+
+@keyframes statFlash {
+  0% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+  50% {
+    filter: brightness(1.5) saturate(2);
+    transform: scale(1.1);
+  }
+  100% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+}
+
+.stat-flash {
+  animation: statFlash 0.5s ease-out;
+}
+
+/* Brutalist style for floating text */
+.floating-resource {
+  text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.8);
+  border: 1px solid currentColor;
+  padding: 2px 8px;
+  background: rgba(0, 0, 0, 0.9);
+}
+</style>
