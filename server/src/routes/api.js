@@ -16,11 +16,18 @@ import TrainingQueue from '../training/TrainingQueue.js';
 import { query } from '../db/index.js';
 import { ContentGenerator } from '../generators/ContentGenerator.js';
 import { DialogGenerator } from '../generators/DialogGenerator.js';
+import { CrewGenerator } from '../generators/CrewGenerator.js';
 import { DollhouseMarket } from '../markets/DollhouseMarket.js';
 import { MarketIntelligence } from '../markets/MarketIntelligence.js';
 import { PoliticalHierarchy } from '../politics/PoliticalHierarchy.js';
 import { StoryConsequenceEngine } from '../narrative/StoryConsequenceEngine.js';
 import { gameRandom } from '../utils/seededRandom.js';
+
+// We'll get NPCManager through the tickEngine when it's available
+let tickEngine = null;
+export const setTickEngine = (engine) => {
+  tickEngine = engine;
+};
 
 const router = express.Router();
 const playerRepo = new PlayerRepository();
@@ -35,6 +42,7 @@ const microNarrative = new MicroNarrativeGenerator();
 const trainingQueue = new TrainingQueue();
 const contentGenerator = new ContentGenerator();
 const dialogGenerator = new DialogGenerator();
+const crewGenerator = new CrewGenerator();
 const dollhouseMarket = new DollhouseMarket();
 const marketIntelligence = new MarketIntelligence();
 const politicalHierarchy = new PoliticalHierarchy();
@@ -223,6 +231,41 @@ router.get('/ship/:shipId/crew', async (req, res) => {
   } catch (error) {
     console.error('Error fetching ship crew:', error);
     res.status(500).json({ error: 'Failed to fetch crew data' });
+  }
+});
+
+// Get ship crew bonuses
+router.get('/ship/:shipId/crew/bonuses', async (req, res) => {
+  try {
+    const { shipId } = req.params;
+    const bonuses = await crewRepo.getCrewBonuses(shipId);
+    const totalSalaries = await crewRepo.getTotalSalaries(shipId);
+    
+    res.json({
+      bonuses,
+      totalSalaries,
+      summary: {
+        fuel_efficiency: bonuses.fuel_efficiency > 0 ? `+${Math.round(bonuses.fuel_efficiency * 100)}% fuel efficiency` : 'No fuel efficiency bonus',
+        illegal_cargo_profit: bonuses.illegal_cargo_profit > 0 ? `+${Math.round(bonuses.illegal_cargo_profit * 100)}% illegal cargo profits` : 'No smuggling bonus',
+        heat_reduction: bonuses.heat_reduction_politics > 0 || bonuses.heat_reduction_smuggling > 0 ? 
+          `${Math.round((bonuses.heat_reduction_politics + bonuses.heat_reduction_smuggling) * 100)}% heat reduction` : 'No heat reduction',
+        reputation_bonus: bonuses.reputation_bonus > 0 ? `+${Math.round(bonuses.reputation_bonus * 100)}% reputation gains` : 'No reputation bonus'
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching crew bonuses:', error);
+    res.status(500).json({ error: 'Failed to fetch crew bonuses' });
+  }
+});
+
+// Get all crew types for hiring UI
+router.get('/crew/types', async (req, res) => {
+  try {
+    const crewTypes = crewGenerator.getAllCrewTypes();
+    res.json(crewTypes);
+  } catch (error) {
+    console.error('Error fetching crew types:', error);
+    res.status(500).json({ error: 'Failed to fetch crew types' });
   }
 });
 
@@ -1326,11 +1369,11 @@ router.post('/generate/stations/:count?', async (req, res) => {
     // Insert into database with all the detail fields
     const insertPromises = stations.map(station => 
       query(
-        `INSERT INTO stations (name, galaxy, sector, station_type, faction, population, security_level, description, notorious_for, bureaucratic_nightmare, local_regulations)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        `INSERT INTO stations (name, galaxy, sector, station_type, faction, population, security_level, description)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [station.name, station.galaxy, station.sector, station.station_type, 
          station.faction, station.population || 10000, station.security_level || 50,
-         station.description, station.notorious_for, station.bureaucratic_nightmare, station.local_regulations]
+         station.description]
       )
     );
     
@@ -1427,17 +1470,42 @@ router.post('/dialog/generate-stream', async (req, res) => {
     console.log(`Streaming dialog for ${actionType} action with state:`, playerState);
     
     let streamingContent = '';
+    let startTime = Date.now();
     let dialogState = {
       situation: '',
       choices: [],
-      id: `${actionType}-${Date.now()}`
+      id: `${actionType}-${Date.now()}`,
+      queueStatus: {},
+      streamProgress: { characters: 0, percentage: 0 },
+      elapsedTime: 0
     };
+    
+    // Get queue stats before starting
+    const initialQueueStats = dialogGenerator.getQueueStats();
+    
+    // Send initial queue status
+    res.write(`data: ${JSON.stringify({
+      type: 'queue_status',
+      queueStatus: {
+        position: initialQueueStats.queueLength + 1,
+        queueLength: initialQueueStats.queueLength,
+        priority: 'high'
+      },
+      dialog: dialogState
+    })}\n\n`);
     
     // Stream dialog generation
     try {
+      const MAX_TOKENS = 1000; // We know this from the DialogGenerator config
+      let tokensReceived = 0;
+      
       await dialogGenerator.generateStreamingDialog(actionType, playerState, {
         onChunk: (chunk, fullContent) => {
+          console.log(`📡 Streaming chunk received: "${chunk}" (${fullContent.length} chars total)`);
           streamingContent = fullContent;
+          
+          // Estimate tokens (rough approximation: ~4 chars per token)
+          tokensReceived = Math.floor(fullContent.length / 4);
           
           // Try to parse partial JSON and update dialog state
           try {
@@ -1449,13 +1517,27 @@ router.post('/dialog/generate-stream', async (req, res) => {
             // Ignore parsing errors for partial content
           }
           
-          // Send update to client
-          res.write(`data: ${JSON.stringify({
+          // Update progress info
+          dialogState.tokensReceived = tokensReceived;
+          dialogState.maxTokens = MAX_TOKENS;
+          dialogState.streamingContent = fullContent;
+          dialogState.isStreaming = true;
+          dialogState.elapsedTime = Math.floor((Date.now() - startTime) / 1000);
+          dialogState.startTime = startTime;
+          
+          const updateData = {
             type: 'chunk',
             content: chunk,
             fullContent: fullContent,
+            tokensReceived: tokensReceived,
+            maxTokens: MAX_TOKENS,
             dialog: dialogState
-          })}\n\n`);
+          };
+          
+          console.log(`📤 Sending streaming update: tokens=${tokensReceived}/${MAX_TOKENS}`);
+          
+          // Send update to client
+          res.write(`data: ${JSON.stringify(updateData)}\n\n`);
         }
       });
       
@@ -1485,6 +1567,11 @@ router.post('/dialog/generate-stream', async (req, res) => {
   }
 });
 
+// Test endpoint for debugging
+router.get('/test', (req, res) => {
+  res.json({ status: 'Backend is working', timestamp: new Date().toISOString() });
+});
+
 // Dialog Generation with Story DNA
 router.post('/dialog/generate', async (req, res) => {
   try {
@@ -1496,6 +1583,7 @@ router.post('/dialog/generate', async (req, res) => {
       });
     }
     
+    console.log(`Dialog generate request: ${actionType}`);
     console.log(`Generating dialog for ${actionType} action with state:`, playerState);
     
     // ANALYZE PLAYER ACTIONS FOR MARKET INTEL
@@ -2082,6 +2170,29 @@ router.get('/god-mode/crew', async (req, res) => {
   }
 });
 
+// Get all stations for galaxy map
+router.get('/stations', async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        name, 
+        galaxy, 
+        sector, 
+        station_type, 
+        faction, 
+        population, 
+        security_level
+      FROM stations 
+      ORDER BY galaxy, sector, name
+    `);
+
+    res.json({ stations: result.rows });
+  } catch (error) {
+    console.error('Error fetching stations:', error);
+    res.status(500).json({ error: 'Failed to fetch stations' });
+  }
+});
+
 // Get all stations with market and mission activity
 router.get('/god-mode/stations', async (req, res) => {
   try {
@@ -2285,6 +2396,109 @@ router.get('/god-mode/system-status', async (req, res) => {
       timestamp: new Date().toISOString(),
       error: 'Database stats unavailable'
     });
+  }
+});
+
+// NPC System Endpoints
+router.get('/npcs/activity', async (req, res) => {
+  try {
+    if (!tickEngine) {
+      return res.json({ activity: [], message: 'NPC system not initialized' });
+    }
+    
+    const limit = parseInt(req.query.limit) || 20;
+    const activity = tickEngine.getNPCActivity(limit);
+    
+    res.json({
+      activity,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error fetching NPC activity:', error);
+    res.status(500).json({ error: 'Failed to fetch NPC activity' });
+  }
+});
+
+router.get('/npcs/location/:locationId', async (req, res) => {
+  try {
+    if (!tickEngine) {
+      return res.json({ npcs: [], message: 'NPC system not initialized' });
+    }
+    
+    const { locationId } = req.params;
+    const npcs = tickEngine.getNPCsAtLocation(locationId);
+    
+    res.json({
+      npcs,
+      locationId,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error fetching NPCs at location:', error);
+    res.status(500).json({ error: 'Failed to fetch NPCs' });
+  }
+});
+
+router.get('/npcs/encounter/:locationId', async (req, res) => {
+  try {
+    if (!tickEngine) {
+      return res.json({ encounter: null, message: 'NPC system not initialized' });
+    }
+    
+    const { locationId } = req.params;
+    const playerFaction = req.query.faction || 'independent';
+    
+    const encounter = tickEngine.getRandomNPCEncounter(locationId, playerFaction);
+    
+    if (encounter) {
+      res.json({
+        encounter: {
+          id: encounter.id,
+          name: encounter.name,
+          archetype: encounter.archetype,
+          cultural_background: encounter.cultural_background,
+          faction_name: encounter.faction_name,
+          traits: encounter.traits,
+          reputation: encounter.reputation[playerFaction] || 0,
+          location_name: encounter.location_name,
+          current_goal: encounter.current_goal?.description || 'Unknown motives'
+        },
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.json({ encounter: null, message: 'No NPCs available for encounter' });
+    }
+  } catch (error) {
+    console.error('Error generating NPC encounter:', error);
+    res.status(500).json({ error: 'Failed to generate encounter' });
+  }
+});
+
+router.post('/npcs/generate', async (req, res) => {
+  try {
+    if (!tickEngine) {
+      return res.status(503).json({ error: 'NPC system not initialized' });
+    }
+    
+    const newNPC = await tickEngine.generateNPC();
+    
+    res.json({
+      npc: {
+        id: newNPC.id,
+        name: newNPC.name,
+        archetype: newNPC.archetype,
+        cultural_background: newNPC.cultural_background,
+        faction_name: newNPC.faction_name,
+        location_name: newNPC.location_name,
+        traits: newNPC.traits,
+        credits: newNPC.credits,
+        current_goal: newNPC.current_goal?.description || 'Unknown motives'
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error generating NPC:', error);
+    res.status(500).json({ error: 'Failed to generate NPC' });
   }
 });
 
