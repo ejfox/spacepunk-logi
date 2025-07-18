@@ -21,18 +21,29 @@ export class MissionRepository {
     const id = uuidv4();
     const expiresAt = expires_at || new Date(Date.now() + (deadline * 60 * 60 * 1000));
     
+    // Convert difficulty strings to integers
+    const difficultyMap = {
+      'trivial': 1,
+      'easy': 2,
+      'standard': 3,
+      'challenging': 4,
+      'hard': 5,
+      'extreme': 6
+    };
+    const difficultyLevel = difficultyMap[difficulty] || 3;
+    
     const result = await query(
       `INSERT INTO missions (
         id, mission_type, difficulty_level, title, description, 
-        requirements, reward_credits, estimated_duration, risk_level, 
-        corporate_sponsor, target_location, expires_at, created_at, is_active
+        requirements, reward_credits, risk_level, 
+        target_location, expires_at, created_at, is_active
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *`,
       [
-        id, type, difficulty, title, description,
-        JSON.stringify(objectives || {}), rewards?.credits || 1000, `${deadline}h`, risks || 'low',
-        'Unknown Corp', station_id || 'Unknown Location', expiresAt, new Date(), true
+        id, type, difficultyLevel, title, description,
+        JSON.stringify(objectives || {}), rewards?.credits || 1000, risks || 'low',
+        station_id || 'Unknown Location', expiresAt, new Date(), true
       ]
     );
     

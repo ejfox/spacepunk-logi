@@ -7,11 +7,11 @@ export class MicroNarrativeGenerator {
     this.chance = new Chance(seed)
     this.missionGenerator = new MissionGenerator()
     
-    // Initialize LLM queue with conservative rate limits
+    // TEMPORARILY DISABLED - prioritizing user dialog
     this.llmQueue = new LLMQueue({
-      requestsPerMinute: 25, // Conservative OpenRouter limit
-      maxRetries: 3,
-      retryDelay: 1000
+      requestsPerMinute: 1, // Nearly disabled - user comes first!
+      maxRetries: 1,
+      retryDelay: 30000 // Very slow background generation
     })
     
     // Set up queue event logging
@@ -126,6 +126,14 @@ EXAMPLE RESPONSES:
     return narratives
   }
 
+  // Generate crew hiring narrative - pure LLM only
+  async generateCrewHiringNarrative(crewMember, priority = 'normal') {
+    const ctx = this.buildCrewContext(crewMember)
+    const prompt = `Generate a 1-sentence corporate hiring summary for ${ctx.name} that treats their extraordinary background as mundane HR details. Example: "Candidate demonstrates strong multitasking abilities in hostile environments and acceptable loss rates for interdimensional logistics operations." Focus on: ${ctx.skills}, ${ctx.background}, ${ctx.traits}`
+    
+    return await this.llmQueue.enqueue(() => this.callMicroLLM(prompt), priority)
+  }
+
   // Generate system/ambient narratives - pure LLM only
   async generateSystemNarrative(type, context = {}, priority = 'low') {
     const systemPrompts = {
@@ -142,6 +150,43 @@ EXAMPLE RESPONSES:
     
     // Pure LLM or nothing
     return await this.llmQueue.enqueue(() => this.callMicroLLM(prompt), priority)
+  }
+
+  // Streaming crew narrative generation
+  async generateStreamingCrewNarrative(crewMember, type, context = {}, options = {}) {
+    const ctx = this.buildCrewContext(crewMember, context)
+    const prompt = this.buildPrompt(type, ctx)
+    
+    // Use MissionGenerator's streaming capability through queue
+    return await this.llmQueue.enqueue(
+      () => this.missionGenerator.callLLMDirect([
+        {
+          role: "system",
+          content: `You are a cynical corporate AI writing employee reports for a space logistics company. Your job is to make cosmic horror and dangerous space adventures sound like boring office work, while accidentally revealing how unhinged and badass these people actually are.
+
+CRITICAL: Respond with ONLY valid JSON in this exact format: {"text": "your one sentence here"}
+
+TONE: Bureaucratic, passive-aggressive corporate HR language that treats interdimensional pirates as "external compliance issues" and reality-bending technology as "productivity tools."
+
+RULES:
+- Return ONLY valid JSON: {"text": "sentence"}
+- Exactly 1 sentence in the "text" field
+- Make space weirdness sound like normal business operations  
+- Accidentally reveal cool backstories through corporate euphemisms
+- Treat terrifying cosmic events as workplace incidents
+- Include specific technical details that hint at wild space adventures
+- Sound like HR desperately trying to make insane shit seem professional`
+        },
+        {
+          role: "user", 
+          content: prompt
+        }
+      ], 0, {
+        stream: true,
+        onChunk: options.onChunk
+      }),
+      'normal'
+    )
   }
 
   // Get queue statistics for monitoring

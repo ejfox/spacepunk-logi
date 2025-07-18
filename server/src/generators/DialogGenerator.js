@@ -10,11 +10,11 @@ export class DialogGenerator {
     this.storyDNA = new StoryDNA(seed)
     this.storyConsequenceEngine = null // Will be injected
     
-    // Initialize LLM queue with conservative rate limits
+    // Initialize LLM queue with MAXIMUM priority for user-facing dialog
     this.llmQueue = new LLMQueue({
-      requestsPerMinute: 25, // Conservative limit
-      maxRetries: 3,
-      retryDelay: 1000
+      requestsPerMinute: 120, // USER FIRST - highest priority queue
+      maxRetries: 2, // Faster retries
+      retryDelay: 500 // Faster retry delay
     })
     
     // Set up queue event logging
@@ -217,28 +217,34 @@ export class DialogGenerator {
   }
 
   parsePartialDialog(partialContent) {
-    // Try to extract valid JSON even from incomplete content
-    const jsonMatch = partialContent.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      try {
-        // Try to parse the JSON, might be incomplete
-        const parsed = JSON.parse(jsonMatch[0]);
-        return {
-          situation: parsed.situation || '',
-          choices: parsed.choices || []
-        };
-      } catch (error) {
-        // If JSON is incomplete, try to extract what we can
-        const situationMatch = partialContent.match(/"situation":\s*"([^"]*)"/)
-        if (situationMatch) {
-          return {
-            situation: situationMatch[1],
-            choices: []
-          };
-        }
+    // Simple line-by-line parsing - much more streaming-friendly!
+    const lines = partialContent.split('\n');
+    const result = {
+      situation: '',
+      choices: []
+    };
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      
+      if (trimmed.startsWith('situation:')) {
+        result.situation = trimmed.substring(10).trim();
+      } else if (trimmed.startsWith('choice1:')) {
+        const choiceData = trimmed.substring(8).trim();
+        const [text, action] = choiceData.split('|');
+        if (text) result.choices[0] = { text: text.trim(), action: action?.trim() || '' };
+      } else if (trimmed.startsWith('choice2:')) {
+        const choiceData = trimmed.substring(8).trim();
+        const [text, action] = choiceData.split('|');
+        if (text) result.choices[1] = { text: text.trim(), action: action?.trim() || '' };
+      } else if (trimmed.startsWith('choice3:')) {
+        const choiceData = trimmed.substring(8).trim();
+        const [text, action] = choiceData.split('|');
+        if (text) result.choices[2] = { text: text.trim(), action: action?.trim() || '' };
       }
     }
-    return null;
+    
+    return result;
   }
 
   selectRelevantTropes(actionType, playerState) {
@@ -536,7 +542,12 @@ TECHNICAL REQUIREMENTS:
 - Always exactly 3 choices with different risk levels
 - Consequences affect fuel, credits, heat, or narrative
 - Brief, punchy descriptions (2-3 sentences max)
-- Return ONLY valid JSON
+- Return in streaming-friendly format:
+
+situation: [description here]
+choice1: [text]|[action_code]
+choice2: [text]|[action_code]  
+choice3: [text]|[action_code]
 
 Your goal: INFINITE story variety using finite DNA components.`
   }

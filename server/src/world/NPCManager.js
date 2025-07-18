@@ -525,8 +525,9 @@ class NPCManager {
         this.logAction(npc, `${npc.name} lost ${loss} credits to station fees`);
       },
       () => {
-        const otherNPC = chance.pickone(Array.from(this.npcs.values()).filter(n => n.id !== npc.id));
-        if (otherNPC) {
+        const otherNPCs = Array.from(this.npcs.values()).filter(n => n.id !== npc.id);
+        if (otherNPCs.length > 0) {
+          const otherNPC = chance.pickone(otherNPCs);
           npc.relationships[otherNPC.id] = chance.pickone(['friend', 'rival', 'contact']);
           this.logAction(npc, `${npc.name} formed a ${npc.relationships[otherNPC.id]} relationship with ${otherNPC.name}`);
         }

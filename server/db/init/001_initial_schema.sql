@@ -11,7 +11,9 @@ CREATE TABLE IF NOT EXISTS players (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP WITH TIME ZONE,
     is_active BOOLEAN DEFAULT true,
-    deaths INTEGER DEFAULT 0
+    deaths INTEGER DEFAULT 0,
+    software_license VARCHAR(20) DEFAULT 'BASIC',
+    credits INTEGER DEFAULT 1000
 );
 
 -- Ships table
@@ -66,25 +68,11 @@ CREATE TABLE IF NOT EXISTS crew_members (
     trait_ambition INTEGER DEFAULT 50,
     trait_work_ethic INTEGER DEFAULT 50,
     
-    -- Jungian cognitive functions (0-100, opposing pairs)
+    -- Simplified personality traits (0-100)
     trait_extroversion INTEGER DEFAULT 50,
     trait_thinking INTEGER DEFAULT 50,
     trait_sensing INTEGER DEFAULT 50,
     trait_judging INTEGER DEFAULT 50,
-    
-    -- Jungian archetype scores (0-100) 
-    archetype_innocent INTEGER DEFAULT 0,
-    archetype_sage INTEGER DEFAULT 0,
-    archetype_explorer INTEGER DEFAULT 0,
-    archetype_outlaw INTEGER DEFAULT 0,
-    archetype_magician INTEGER DEFAULT 0,
-    archetype_hero INTEGER DEFAULT 0,
-    archetype_lover INTEGER DEFAULT 0,
-    archetype_jester INTEGER DEFAULT 0,
-    archetype_caregiver INTEGER DEFAULT 0,
-    archetype_creator INTEGER DEFAULT 0,
-    archetype_ruler INTEGER DEFAULT 0,
-    archetype_orphan INTEGER DEFAULT 0,
     
     -- Status
     health INTEGER DEFAULT 100,
@@ -95,16 +83,16 @@ CREATE TABLE IF NOT EXISTS crew_members (
     -- Extended attributes
     backstory TEXT,
     employment_notes TEXT,
-    previous_job TEXT,
-    availability_reason TEXT,
     notable_incident TEXT,
-    employment_red_flags TEXT,
-    skills_summary TEXT,
-    personality_quirks TEXT,
     hiring_cost INTEGER DEFAULT 500,
     corporate_rating VARCHAR(10) DEFAULT 'C',
     clearance_level INTEGER DEFAULT 1,
     union_member BOOLEAN DEFAULT false,
+    crew_type VARCHAR(50) DEFAULT 'general',
+    crew_type_name VARCHAR(100) DEFAULT 'General Crew',
+    crew_type_description TEXT DEFAULT 'Basic crew member with no specializations',
+    crew_bonuses JSONB DEFAULT '{}',
+    salary INTEGER DEFAULT 100,
     
     -- Metadata
     hired_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -176,15 +164,9 @@ CREATE TABLE IF NOT EXISTS missions (
     requirements JSONB DEFAULT '{}',
     expires_at TIMESTAMP WITH TIME ZONE,
     difficulty_level INTEGER DEFAULT 1,
-    estimated_duration VARCHAR(50),
     risk_level VARCHAR(20) DEFAULT 'low',
     cargo_space_required INTEGER DEFAULT 0,
     crew_skills_required TEXT[],
-    legal_status VARCHAR(20) DEFAULT 'legal',
-    corporate_sponsor TEXT,
-    failure_consequences TEXT,
-    hidden_complications TEXT,
-    bureaucratic_catch TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     is_active BOOLEAN DEFAULT true
 );
@@ -211,17 +193,10 @@ CREATE TABLE IF NOT EXISTS stations (
     security_level INTEGER DEFAULT 50 CHECK (security_level >= 0 AND security_level <= 100),
     trade_volume NUMERIC(12,2) DEFAULT 0,
     description TEXT,
-    notorious_for TEXT,
-    bureaucratic_nightmare TEXT,
-    local_regulations TEXT,
     docking_fee INTEGER DEFAULT 50,
     fuel_price NUMERIC(6,2) DEFAULT 52.00,
     repair_quality INTEGER DEFAULT 50,
-    black_market_activity INTEGER DEFAULT 20,
-    corruption_level INTEGER DEFAULT 30,
-    health_rating VARCHAR(10) DEFAULT 'C',
     amenities TEXT[],
-    restricted_goods TEXT[],
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -257,6 +232,16 @@ CREATE TABLE IF NOT EXISTS training_queue (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- License purchases table for tracking software upgrades
+CREATE TABLE IF NOT EXISTS license_purchases (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    player_id UUID REFERENCES players(id) ON DELETE CASCADE,
+    previous_license VARCHAR(20) NOT NULL,
+    new_license VARCHAR(20) NOT NULL,
+    cost INTEGER NOT NULL,
+    purchased_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_ships_player_id ON ships(player_id);
 CREATE INDEX idx_ship_components_ship_id ON ship_components(ship_id);
@@ -270,6 +255,7 @@ CREATE INDEX idx_training_queue_status ON training_queue(status);
 CREATE INDEX idx_training_queue_end_time ON training_queue(end_time);
 CREATE INDEX idx_stations_galaxy ON stations(galaxy);
 CREATE INDEX idx_stations_faction ON stations(faction);
+CREATE INDEX idx_license_purchases_player_id ON license_purchases(player_id);
 
 -- Create update timestamp trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()

@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import fetch from 'node-fetch';
 import { LLMConfig } from '../utils/llmConfig.js';
+import { LLMQueue } from '../utils/LLMQueue.js';
 
 class MissionGenerator extends EventEmitter {
   constructor(config = {}) {
@@ -14,6 +15,16 @@ class MissionGenerator extends EventEmitter {
       retryDelay: config.retryDelay || 1000,
       ...config
     };
+    
+    // TEMPORARILY DISABLED - prioritizing user dialog
+    this.llmQueue = new LLMQueue({
+      requestsPerMinute: 1, // Nearly disabled - user comes first!
+      maxRetries: 1,
+      retryDelay: 10000 // Very slow background generation
+    })
+    
+    // Set up queue event logging
+    this.setupQueueLogging()
     
     if (!this.llmConfig.isConfigured()) {
       console.warn('MissionGenerator: No LLM configured. LLM features will be disabled.');
@@ -30,6 +41,24 @@ class MissionGenerator extends EventEmitter {
     this.difficultyLevels = ['routine', 'standard', 'challenging', 'dangerous', 'legendary'];
     
     this.activeGenerations = new Map();
+  }
+
+  setupQueueLogging() {
+    this.llmQueue.on('queued', ({ id, queueLength, priority }) => {
+      console.log(`📋 Mission LLM request queued: ${id} (${priority}) - Queue: ${queueLength}`)
+    })
+    
+    this.llmQueue.on('processing', ({ id, attempt, queuedFor }) => {
+      console.log(`🤖 Processing mission LLM request: ${id} (attempt ${attempt}, queued ${queuedFor}ms)`)
+    })
+    
+    this.llmQueue.on('completed', ({ id, responseTime, attempts }) => {
+      console.log(`✅ Mission LLM request completed: ${id} in ${responseTime}ms (${attempts} attempts)`)
+    })
+    
+    this.llmQueue.on('error', ({ id, error, attempt }) => {
+      console.log(`❌ Mission LLM request failed: ${id} - ${error} (attempt ${attempt})`)
+    })
   }
 
   async generateMission(context = {}) {
@@ -51,7 +80,11 @@ class MissionGenerator extends EventEmitter {
         marketEvents: context.marketEvents || []
       });
       
-      const llmResponse = await this.callLLM(prompt);
+      // Call LLM through queue with low priority for background mission generation
+      const llmResponse = await this.llmQueue.enqueue(
+        () => this.callLLMDirect(prompt),
+        'low' // Low priority for background missions
+      );
       const mission = this.parseMissionResponse(llmResponse, missionType, difficulty);
       
       this.activeGenerations.delete(generationId);
@@ -116,70 +149,97 @@ Generate a ${context.difficulty} difficulty ${context.missionType.replace('_', '
     };
   }
 
-  async callLLM(prompt, retryCount = 0, options = {}) {
+  async callLLMDirect(prompt, retryCount = 0, options = {}) {
     if (!this.llmConfig.isConfigured()) {
       throw new Error('No LLM configured for requests');
     }
 
-    try {
-      const llmConf = this.llmConfig.getConfig();
-      const requestBody = {
-        model: llmConf.model,
-        messages: prompt.messages,
-        max_tokens: this.config.maxTokens,
-        temperature: this.config.temperature,
-        stream: options.stream || false
-      };
+    // Try providers with fallback
+    const maxProviderAttempts = 3;
+    let lastError = null;
 
-      const response = await fetch(this.llmConfig.getEndpoint('/chat/completions'), {
-        method: 'POST',
-        headers: llmConf.headers,
-        body: JSON.stringify(requestBody)
-      });
+    for (let attempt = 0; attempt < maxProviderAttempts; attempt++) {
+      try {
+        // Get best available provider or round-robin
+        const provider = options.forceProvider || 
+          (attempt === 0 ? await this.llmConfig.getBestProvider() : this.llmConfig.getNextProvider());
+        
+        const requestBody = {
+          model: provider.model,
+          messages: prompt.messages || prompt,
+          max_tokens: this.config.maxTokens,
+          temperature: this.config.temperature,
+          stream: options.stream || false
+        };
 
-      if (!response.ok) {
-        throw new Error(`LLM API error: ${response.status} ${response.statusText}`);
-      }
+        console.log(`🚀 Trying ${provider.name} (${provider.model}) - attempt ${attempt + 1}`);
 
-      // Handle streaming response
-      if (options.stream && options.onChunk) {
-        return await this.handleStreamingResponse(response, options.onChunk);
-      }
+        const response = await fetch(this.llmConfig.getEndpoint('/chat/completions', provider), {
+          method: 'POST',
+          headers: provider.headers,
+          body: JSON.stringify(requestBody),
+          signal: AbortSignal.timeout(provider.timeout)
+        });
 
-      // Handle regular response
-      const data = await response.json();
-      
-      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        throw new Error('Invalid LLM response format');
-      }
-
-      return data.choices[0].message.content;
-    } catch (error) {
-      if (retryCount < this.config.maxRetries) {
-        // Only log on first failure, not every retry
-        if (retryCount === 0) {
-          console.log(`⚠️  LLM unavailable, using fallback systems (${error.message})`);
+        if (!response.ok) {
+          throw new Error(`${provider.name} API error: ${response.status} ${response.statusText}`);
         }
-        await new Promise(resolve => setTimeout(resolve, this.config.retryDelay));
-        return this.callLLM(prompt, retryCount + 1);
+
+        // Handle streaming response
+        if (options.stream && options.onChunk) {
+          console.log(`📡 Starting stream from ${provider.name}`);
+          return await this.handleStreamingResponse(response, options.onChunk);
+        }
+
+        // Handle regular response
+        const data = await response.json();
+        
+        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+          throw new Error(`Invalid response format from ${provider.name}`);
+        }
+
+        console.log(`✅ Success with ${provider.name} in ${Date.now()}ms`);
+        return data.choices[0].message.content;
+
+      } catch (error) {
+        lastError = error;
+        console.log(`❌ ${error.message} - trying next provider...`);
+        continue;
       }
-      throw error;
     }
+
+    // If all providers failed, do traditional retry
+    if (retryCount < this.config.maxRetries) {
+      console.log(`⚠️ All providers failed, retrying in ${this.config.retryDelay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, this.config.retryDelay));
+      return this.callLLMDirect(prompt, retryCount + 1, options);
+    }
+
+    throw lastError || new Error('All LLM providers failed');
+  }
+
+  // Public callLLM method that uses the queue
+  async callLLM(prompt, retryCount = 0, options = {}) {
+    const priority = options.priority || 'normal'
+    return await this.llmQueue.enqueue(
+      () => this.callLLMDirect(prompt, retryCount, options),
+      priority
+    )
+  }
+
+  // Get queue statistics for monitoring
+  getQueueStats() {
+    return this.llmQueue.getStats()
   }
 
   async handleStreamingResponse(response, onChunk) {
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
     let buffer = '';
     let fullContent = '';
 
     try {
-      while (true) {
-        const { done, value } = await reader.read();
-        
-        if (done) break;
-        
-        buffer += decoder.decode(value, { stream: true });
+      // Use Node.js readable stream instead of browser getReader
+      for await (const chunk of response.body) {
+        buffer += chunk.toString();
         const lines = buffer.split('\n');
         
         // Keep the last potentially incomplete line in the buffer
@@ -206,8 +266,9 @@ Generate a ${context.difficulty} difficulty ${context.missionType.replace('_', '
       }
       
       return fullContent;
-    } finally {
-      reader.releaseLock();
+    } catch (error) {
+      console.error('Error in streaming response:', error);
+      throw error;
     }
   }
 
