@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events';
 import fetch from 'node-fetch';
+import { LLMQueue } from '../utils/LLMQueue.js';
 
 class AbsenceStories extends EventEmitter {
   constructor(config = {}) {
@@ -16,6 +17,16 @@ class AbsenceStories extends EventEmitter {
       ...config
     };
     
+    // TEMPORARILY DISABLED - prioritizing user dialog
+    this.llmQueue = new LLMQueue({
+      requestsPerMinute: 1, // Nearly disabled - user comes first!
+      maxRetries: 1,
+      retryDelay: 20000 // Very slow background generation
+    })
+    
+    // Set up queue event logging
+    this.setupQueueLogging()
+    
     this.storyTypes = [
       'crew_development', 'market_observation', 'system_maintenance',
       'crew_interaction', 'unexpected_event', 'routine_operations',
@@ -23,6 +34,24 @@ class AbsenceStories extends EventEmitter {
     ];
     
     this.narrativeTemplates = this.initializeTemplates();
+  }
+
+  setupQueueLogging() {
+    this.llmQueue.on('queued', ({ id, queueLength, priority }) => {
+      console.log(`📖 Ship log LLM request queued: ${id} (${priority}) - Queue: ${queueLength}`)
+    })
+    
+    this.llmQueue.on('processing', ({ id, attempt, queuedFor }) => {
+      console.log(`🤖 Processing ship log LLM request: ${id} (attempt ${attempt}, queued ${queuedFor}ms)`)
+    })
+    
+    this.llmQueue.on('completed', ({ id, responseTime, attempts }) => {
+      console.log(`✅ Ship log LLM request completed: ${id} in ${responseTime}ms (${attempts} attempts)`)
+    })
+    
+    this.llmQueue.on('error', ({ id, error, attempt }) => {
+      console.log(`❌ Ship log LLM request failed: ${id} - ${error} (attempt ${attempt})`)
+    })
   }
 
   async generateAbsenceStory(context = {}) {
@@ -52,8 +81,11 @@ class AbsenceStories extends EventEmitter {
         storyComplexity
       });
 
-      // Generate story using LLM
-      const story = await this.generateLLMStory(narrativeContext);
+      // Generate story using LLM through queue
+      const story = await this.llmQueue.enqueue(
+        () => this.generateLLMStoryDirect(narrativeContext),
+        'normal' // Normal priority for ship logs
+      );
       
       // Enhance with Spacepunk flavor
       const enhancedStory = this.addSpacepunkFlavor(story, narrativeContext);
@@ -150,7 +182,7 @@ class AbsenceStories extends EventEmitter {
     };
   }
 
-  async generateLLMStory(context) {
+  async generateLLMStoryDirect(context) {
     if (!this.config.apiKey) {
       throw new Error('No API key configured for story generation');
     }
@@ -186,6 +218,19 @@ class AbsenceStories extends EventEmitter {
       console.error('LLM story generation failed:', error);
       throw error;
     }
+  }
+
+  // Public generateLLMStory method that uses the queue
+  async generateLLMStory(context) {
+    return await this.llmQueue.enqueue(
+      () => this.generateLLMStoryDirect(context),
+      'normal'
+    )
+  }
+
+  // Get queue statistics for monitoring
+  getQueueStats() {
+    return this.llmQueue.getStats()
   }
 
   buildStoryPrompt(context) {

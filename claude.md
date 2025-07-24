@@ -94,23 +94,7 @@ To explain "Spacepunk" to your development team and help them get something goin
 5. **Cultural Consistency:** Generated content respects crew cultural backgrounds
 6. **Performance Balance:** Pre-generate expensive content, generate simple content on-demand
 
-## Current Implementation Status (June 2025)
-
-**📋 OUTSTANDING GITHUB ISSUES STATUS:**
-*[NOTE: Always check `gh issue list` before planning next moves]*
-
-**🔴 CRITICAL ISSUES STILL OPEN:**
-- #45-48: Permadeath system (triggers, survival, post-death, reputation inheritance)
-- #53-56: Trait system expansion (database tables, Level 1 definitions, effects, Level 3 corruption)
-- #41-44: Progressive UI complexity (tab unlocking, density scaling, brutalist components)
-- #49-51: Intel/information propagation system
-- #58-61: Enhanced narrative systems (impact tracking, status displays)
-
-**✅ ISSUES EFFECTIVELY COMPLETED (Need Closing):**
-- #58: LLM-Generated Ship's Log Summaries ✅ 
-- #57: Real-Time Training Queues ✅
-- #60-61: Tick Counter & Status Bar ✅
-- #43-44: Brutalist UI Components ✅
+## Current Implementation Status (July 2025)
 
 **✅ FULLY COMPLETED MVP SYSTEMS:**
 - **Complete Brutalist UI System:** Atomic component library with progressive unlocking (BASIC → STANDARD → PROFESSIONAL licenses)
@@ -121,35 +105,43 @@ To explain "Spacepunk" to your development team and help them get something goin
 - **Tick Engine:** Server-authoritative game loop processing all systems every 30 seconds
 - **WebSocket Integration:** Real-time updates for all game systems
 
-**🔥 NEXT 3 STRATEGIC MOVES:**
+**🚀 NEWLY COMPLETED (July 2025):**
+- **LLM Queue System:** All LLM requests now use proper rate-limited queues instead of overwhelming the local LLM
+- **Streaming Dialog System:** Explore, spy, and travel actions now stream LLM-generated content in real-time
+- **Enhanced Loading Experience:** Queue position, token progress, streaming preview, and real-time stats
+- **Reusable StreamingLoader Component:** Beautiful brutalist loading screens for all LLM operations
+- **Error Handling:** Big obvious UI errors instead of silent console failures
 
-### **MOVE 1: Software License Purchase System** ⚡ *[HIGH PRIORITY]*
-**Goal:** Complete the progressive UI unlocking mechanic that defines Spacepunk's identity
-**Implementation:**
-- Add license purchase API endpoints with credit costs (BASIC=free, STANDARD=5000cr, PROFESSIONAL=25000cr)
-- Implement license validation middleware for tab access
-- Create "Software Upgrade Terminal" in Ship Systems tab with corporate jargon ("Enterprise License Agreement", "Terms of Service", etc.)
-- Add passive-aggressive upgrade prompts ("Your current license limits productivity. Consider upgrading for optimal workflow synergy.")
+**🔥 CRITICAL TECHNICAL NOTES FOR NEXT SESSION:**
 
-### **MOVE 2: Permadeath & Crew Memory System** 💀 *[CORE MECHANIC]*
-**Goal:** Implement the generational memory system that makes Spacepunk unique
-**Implementation:**
-- Create player death triggers (health system, mission failures, crew mutiny)
-- Build crew survival determination algorithms based on loyalty/relationship scores
-- Implement memory inheritance system where surviving crew remember previous captains
-- Design "New Captain" character creation that shows inherited crew relationships
-- Add memorial system where dead captains become part of ship lore
+### **LLM SYSTEM ARCHITECTURE:**
+- **LM Studio Setup:** Llama-3.1-8B-Instruct on localhost:1234 (takes 30-60s per request)
+- **Queue System:** Multiple LLMQueue instances with USER-FIRST priority:
+  - DialogGenerator: 120 req/min (MAXIMUM PRIORITY for user actions)
+  - MissionGenerator: 1 req/min (background only - nearly disabled)
+  - AbsenceStories: 1 req/min (background only - nearly disabled)
+  - MicroNarrativeGenerator: 1 req/min (background only - nearly disabled)
+- **NEVER add artificial timeouts** - LM Studio needs time to generate quality responses
+- **Frontend Ports:** http://localhost:3667/ (game) + http://localhost:3666/ (API)
+- **DELETED SERVERS:** All "minimal" and "enhanced-minimal" servers deleted - only using real LLM-integrated server
 
-### **MOVE 3: Enhanced Trait System (Levels 2-3)** 🧬 *[DEPTH EXPANSION]*
-**Goal:** Add rare/corrupted traits that create emergent gameplay and narrative depth
-**Implementation:**
-- Design Level 2 traits (10% spawn rate): "Caffeinated Beyond Reason", "Bureaucracy Whisperer", "Void Touched"
-- Create Level 3 corrupted traits (2% spawn rate): "Third Arm Efficiency", "Temporal Displacement Syndrome", "Corporate Stockholm Syndrome"
-- Implement trait evolution through extreme training or mission outcomes
-- Add trait-specific dialogue and ship's log narrative hooks
+### **STREAMING SYSTEM COMPONENTS:**
+- **StreamingLoader.vue:** Reusable component showing queue position, token progress, live preview
+- **Error Handling:** All LLM failures show big obvious UI errors, never silent console failures
+- **Actions Using Streaming:** explore, spy, travel (others use regular dialog)
+- **Token Estimation:** ~4 chars per token for progress bars
 
-**🎮 CURRENT GAME LOOP:**
-Players start with BASIC license → hire crew → set training goals → accept missions → upgrade software licenses → unlock complex features → experience permadeath → inherit crew memories → repeat with enhanced relationships. **THE FULL SPACEPUNK EXPERIENCE IS 90% COMPLETE.**
+### **DEBUGGING WORKFLOW:**
+1. **Check LM Studio logs:** `/tmp/lmstudio-server-log.txt` 
+2. **Backend logs:** Look for queue activity and LLM requests
+3. **Never hardcode fallbacks** - fix the actual LLM integration
+4. **Test LM Studio directly:** `curl http://localhost:1234/v1/chat/completions` first
+
+**🎮 CURRENT STATE:** 
+LLM streaming system fully functional. DialogGenerator has MAXIMUM priority (120 req/min) while background systems nearly disabled (1 req/min each). All fake "minimal" servers deleted. Use `./restart-everything.sh` to start both servers on correct ports. Ready for next gameplay features!
+
+**🚨 CURRENT ISSUE:** 
+Frontend might be running on wrong port (3001 instead of 3667). Backend should be on 3666. Check port conflicts and use proper startup scripts.
 
 Here is a document outlining the requirements, ideas, goals, and acceptance criteria for the Spacepunk Logistics Sim character and avatar generation system, designed to integrate seamlessly with the game's brutalist aesthetic and deep simulation mechanics.
 

@@ -50,18 +50,13 @@ async function populateWorld() {
       try {
         await query(
           `INSERT INTO stations (name, galaxy, sector, station_type, faction, population, 
-                               security_level, description, notorious_for, bureaucratic_nightmare, 
-                               local_regulations, docking_fee, fuel_price, repair_quality, 
-                               black_market_activity, corruption_level)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+                               security_level, description, docking_fee, fuel_price, repair_quality)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
           [station.name, station.galaxy, station.sector, station.station_type, station.faction,
            station.population || 10000, station.security_level || 50, station.description,
-           station.notorious_for, station.bureaucratic_nightmare, station.local_regulations,
            Math.floor(Math.random() * 200) + 25, // docking_fee 25-225
            Math.floor(Math.random() * 30) + 40,  // fuel_price 40-70
-           Math.floor(Math.random() * 100),      // repair_quality 0-100
-           Math.floor(Math.random() * 60),       // black_market_activity 0-60
-           Math.floor(Math.random() * 80)]       // corruption_level 0-80
+           Math.floor(Math.random() * 100)]      // repair_quality 0-100
         );
       } catch (err) {
         console.log(`Skipped duplicate station: ${station.name}`);

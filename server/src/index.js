@@ -8,7 +8,7 @@ import { createServer } from 'http';
 import { initDatabase } from './db/index.js';
 import { TickEngine } from './engine/tickEngine.js';
 import { setupWebSocketHandlers } from './websocket/handlers.js';
-import apiRoutes from './routes/api.js';
+import apiRoutes, { setTickEngine } from './routes/api.js';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 import { fileURLToPath } from 'url';
@@ -199,6 +199,9 @@ app.get('/api/server-status', (req, res) => {
 
 const tickEngine = new TickEngine(TICK_INTERVAL);
 
+// Connect tick engine to API routes for NPC access
+setTickEngine(tickEngine);
+
 setupWebSocketHandlers(wss, tickEngine);
 
 async function start() {
@@ -209,8 +212,9 @@ async function start() {
     await initDatabase();
     console.log('✅ Database connection established');
     
+    // Start tick engine with NPCs
     tickEngine.start();
-    console.log(`⏰ Game tick engine: ${TICK_INTERVAL/1000}s intervals`);
+    console.log(`⏰ Game tick engine: ENABLED (${TICK_INTERVAL/1000}s intervals)`);
     
     server.listen(PORT, () => {
       console.log(`🌐 Server running: http://localhost:${PORT}`);

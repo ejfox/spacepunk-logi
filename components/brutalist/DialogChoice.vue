@@ -8,40 +8,43 @@
       </div>
       
       <div class="dialog-situation">
-        <div class="situation-text" :class="{ 'streaming': dialog.isStreaming }">
-          {{ dialog.situation }}
-          <span v-if="dialog.isStreaming" class="streaming-cursor">█</span>
-        </div>
-        <div v-if="dialog.context" class="situation-context">
-          <span v-for="(value, key) in dialog.context" :key="key" class="context-item">
-            {{ key.toUpperCase() }}: {{ value }}
-          </span>
+        <div class="situation-display">
+          <div class="situation-text-area">
+            <div class="situation-text" :class="{ 'streaming': dialog.isStreaming }">
+              {{ dialog.situation }}
+              <span v-if="dialog.isStreaming" class="streaming-cursor">█</span>
+            </div>
+            <div v-if="dialog.context" class="situation-context">
+              <span v-for="(value, key) in dialog.context" :key="key" class="context-item">
+                {{ key.toUpperCase() }}: {{ value }}
+              </span>
+            </div>
+          </div>
+          <div class="situation-visual">
+            <canvas 
+              ref="situationCanvas"
+              width="128"
+              height="64"
+              class="situation-canvas"
+            />
+          </div>
         </div>
       </div>
       
       <div class="dialog-choices">
         <!-- Loading State -->
-        <div v-if="dialog.isLoading || dialog.isStreaming" class="loading-section">
-          <div class="loading-header">
-            <span class="header-marker">></span>
-            GENERATING RESPONSE OPTIONS...
-          </div>
-          
-          <div class="loading-animation">
-            <div class="loading-bar">
-              <div class="loading-progress"></div>
-            </div>
-            <div class="loading-text" v-if="dialog.progressText">
-              {{ dialog.progressText }}
-            </div>
-            <div v-else class="loading-dots">
-              <span>PROCESSING</span>
-              <span class="dot">.</span>
-              <span class="dot">.</span>
-              <span class="dot">.</span>
-            </div>
-          </div>
-        </div>
+        <StreamingLoader
+          v-if="dialog.isLoading || dialog.isStreaming"
+          :title="dialog.isStreaming ? 'STREAMING DIALOG GENERATION' : 'GENERATING RESPONSE OPTIONS'"
+          :max-tokens="dialog.maxTokens || 1000"
+          :queue-position="dialog.queueStatus?.position"
+          :queue-length="dialog.queueStatus?.queueLength"
+          :priority="dialog.queueStatus?.priority || 'normal'"
+          :tokens-received="dialog.tokensReceived || 0"
+          :streaming-content="dialog.streamingContent"
+          :is-streaming="dialog.isStreaming"
+          :start-time="dialog.startTime"
+        />
         
         <!-- Normal Choices -->
         <div v-else>
@@ -122,6 +125,8 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import StreamingLoader from './StreamingLoader.vue'
+import * as PIXI from 'pixi.js'
 
 const emit = defineEmits(['choice-made', 'dialog-cancelled'])
 
@@ -150,9 +155,96 @@ const props = defineProps({
 })
 
 const selectedChoice = ref(null)
+const situationCanvas = ref(null)
+const pixiApp = ref(null)
 
 function generateId() {
   return `TX-${Date.now().toString(36).toUpperCase()}`
+}
+
+function initSituationDisplay() {
+  if (!situationCanvas.value) return
+  
+  try {
+    pixiApp.value = new PIXI.Application({
+      view: situationCanvas.value,
+      width: 128,
+      height: 64,
+      backgroundColor: 0x000000,
+      antialias: false,
+      resolution: 1
+    })
+    
+    drawSituationDisplay()
+  } catch (error) {
+    console.error('Situation display initialization failed:', error)
+  }
+}
+
+function drawSituationDisplay() {
+  if (!pixiApp.value) return
+  
+  const graphics = new PIXI.Graphics()
+  pixiApp.value.stage.addChild(graphics)
+  graphics.clear()
+  
+  // Draw situation type indicator based on dialog context - helps player understand scenario
+  const dialogType = props.dialog.id || 'unknown'
+  
+  // Visual representations tied to actual game mechanics
+  if (dialogType.includes('explore')) {
+    // Exploration radar sweep - shows scan radius and detected objects
+    graphics.lineStyle(1, 0xFFFFFF)
+    graphics.drawCircle(64, 32, 20)
+    graphics.drawCircle(64, 32, 15)
+    graphics.drawCircle(64, 32, 10)
+    
+    // Detected objects - represents potential discoveries
+    graphics.beginFill(0xFFFFFF)
+    graphics.drawRect(50, 25, 2, 2)
+    graphics.drawRect(75, 40, 2, 2)
+    graphics.endFill()
+    
+  } else if (dialogType.includes('spy')) {
+    // Spy network visualization - shows information flow and contacts
+    graphics.lineStyle(1, 0xFFFFFF)
+    for (let i = 0; i < 5; i++) {
+      const x = 20 + i * 20
+      const y = 32 + Math.sin(i) * 10
+      graphics.drawCircle(x, y, 3)
+      
+      if (i > 0) {
+        graphics.moveTo(x - 20, 32 + Math.sin(i-1) * 10)
+        graphics.lineTo(x, y)
+      }
+    }
+    
+  } else if (dialogType.includes('travel')) {
+    // Travel route visualization - shows jump points and navigation hazards
+    graphics.lineStyle(1, 0xFFFFFF)
+    graphics.moveTo(10, 32)
+    graphics.lineTo(40, 20)
+    graphics.lineTo(70, 44)
+    graphics.lineTo(110, 32)
+    
+    // Jump points
+    graphics.beginFill(0xFFFFFF)
+    graphics.drawRect(9, 31, 2, 2)
+    graphics.drawRect(39, 19, 2, 2)
+    graphics.drawRect(69, 43, 2, 2)
+    graphics.drawRect(109, 31, 2, 2)
+    graphics.endFill()
+    
+  } else {
+    // Generic situation display - shows basic tactical overview
+    graphics.beginFill(0xFFFFFF)
+    for (let i = 0; i < 10; i++) {
+      const x = 20 + (i % 4) * 20
+      const y = 20 + Math.floor(i / 4) * 8
+      graphics.drawRect(x, y, 8, 4)
+    }
+    graphics.endFill()
+  }
 }
 
 function getRiskClass(risk) {
@@ -239,6 +331,14 @@ function getHeatImpactClass(value) {
   return 'impact-neutral'
 }
 
+function getProgressWidth() {
+  if (props.dialog.streamProgress?.percentage) {
+    return `${props.dialog.streamProgress.percentage}%`
+  }
+  // Default animation if no progress data
+  return '30%'
+}
+
 function handleBackdropClick() {
   if (props.allowCancel) {
     cancelDialog()
@@ -271,10 +371,15 @@ function handleKeyDown(event) {
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeyDown)
+  initSituationDisplay()
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
+  if (pixiApp.value) {
+    pixiApp.value.destroy(true)
+    pixiApp.value = null
+  }
 })
 </script>
 
@@ -336,6 +441,29 @@ onUnmounted(() => {
   padding: 16px;
   border-bottom: 1px solid #333333;
   background: #050505;
+}
+
+.situation-display {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.situation-text-area {
+  flex: 1;
+}
+
+.situation-visual {
+  flex-shrink: 0;
+}
+
+.situation-canvas {
+  display: block;
+  background: #000000;
+  border: 2px solid #ffffff;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
 }
 
 .situation-text {
@@ -586,10 +714,39 @@ onUnmounted(() => {
 /* Loading Animation Styles */
 .loading-section {
   padding: 16px;
-  min-height: 200px;
+  min-height: 300px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  gap: 16px;
+}
+
+/* Queue Status */
+.queue-status {
+  display: flex;
+  gap: 24px;
+  padding: 12px;
+  border: 1px solid #333333;
+  background: #050505;
+  font-size: 11px;
+}
+
+.queue-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.queue-label {
+  color: #666666;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 9px;
+}
+
+.queue-value {
+  color: #00ff00;
+  font-weight: bold;
+  font-family: monospace;
 }
 
 .loading-header {
@@ -629,6 +786,37 @@ onUnmounted(() => {
   0% { transform: translateX(-100%); }
   50% { transform: translateX(233%); }
   100% { transform: translateX(-100%); }
+}
+
+.loading-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 10px;
+  color: #666666;
+  font-family: monospace;
+}
+
+/* Streaming Preview */
+.streaming-preview {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid #333333;
+  background: #020202;
+}
+
+.streaming-label {
+  font-size: 10px;
+  color: #666666;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.streaming-content {
+  font-size: 12px;
+  color: #aaaaaa;
+  line-height: 1.4;
+  font-family: monospace;
 }
 
 .loading-text {

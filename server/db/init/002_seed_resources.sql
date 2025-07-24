@@ -41,21 +41,15 @@ INSERT INTO resources (code, name, category, base_price, weight, volume, descrip
 ('ARTIFACTS', 'Ancient Artifacts', 'luxury', 3000.00, 0.5, 0.5, 'Historical artifacts of unknown origin');
 
 -- Seed anchor stations (major hubs that are always the same)
-INSERT INTO stations (name, galaxy, sector, station_type, faction, population, security_level, description, notorious_for, bureaucratic_nightmare, local_regulations) VALUES
+INSERT INTO stations (name, galaxy, sector, station_type, faction, population, security_level, description, docking_fee, fuel_price, repair_quality) VALUES
 ('Earth Station Alpha', 'Sol System', 'Inner', 'civilian', 'Federation', 50000, 85, 
  'Primary civilian hub for Sol System with gleaming corporate architecture and mandatory productivity monitoring',
- 'Having 47 different queues for the same service, all with different operating hours',
- 'Visitor registration requires biometric scan, background check, and essay on "Why Earth Station Alpha Represents Peak Human Achievement"',
- 'No food from outside vendors (station cafeteria serves "nutritionally optimized" protein bars), mandatory happiness survey every 4 hours'),
+ 75, 55.00, 85),
 
 ('Mars Orbital Platform', 'Sol System', 'Inner', 'mining', 'Federation', 25000, 70,
- 'Industrial mining platform extracting "essential minerals" (mostly iron oxide for corporate flower pots)',
- 'Elevator that breaks down exactly when you need it most, stranding workers between shifts',
- 'Mining permits require approval from Earth (3-month processing time), emergency repairs need authorization from corporate headquarters',
- 'Dust masks mandatory but only available from company store at 400% markup, safety meetings every day at 5 AM'),
+ 'Industrial mining platform extracting essential minerals for corporate use',
+ 50, 48.00, 60),
 
 ('Proxima Trade Hub', 'Proxima Centauri', 'Core', 'trade', 'Commercial Guild', 75000, 60,
- 'Massive commercial trading post where every transaction requires 12 different forms of documentation',
- 'Having a black market that operates more efficiently than the official trade offices',
- 'Import/export requires Guild membership ($50,000 fee), Customs inspection (random delays 2-14 days), and Trade License (expires annually)',
- 'All trade conducted in "Guild Standard Units" (nobody knows the conversion rate), mandatory arbitration for disputes over 5 credits');
+ 'Massive commercial trading post where every transaction requires extensive documentation',
+ 100, 52.00, 70);

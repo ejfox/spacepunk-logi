@@ -11,9 +11,9 @@ echo "⏳ Waiting for ports to clear..."
 sleep 3
 
 echo ""
-echo "🚀 STARTING BACKEND (enhanced minimal server)..."
+echo "🚀 STARTING BACKEND (REAL SERVER WITH LLM)..."
 cd /Users/ejfox/code/spacepunk-logi/server
-node enhanced-minimal-server.js &
+npm run dev &
 BACKEND_PID=$!
 echo "Backend PID: $BACKEND_PID"
 

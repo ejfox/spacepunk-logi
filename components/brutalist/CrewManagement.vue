@@ -35,17 +35,18 @@
           NO CREW ASSIGNED - HIRE PERSONNEL TO BEGIN OPERATIONS
         </div>
         
-        <div v-else-if="activeTab === 'roster'" class="crew-grid">
-          <CrewCard 
-            v-for="member in currentCrew" 
-            :key="member.id" 
-            :crew-member="transformCrewMember(member)"
-            :selected="selectedCrewId === member.id" 
-            :show-actions="true" 
-            @select="selectedCrewId = member.id"
-            @assign="handleAssignCrew" 
-            @details="handleCrewDetails" 
-          />
+        <div v-else-if="activeTab === 'roster'" class="crew-roster-section">
+          <div class="crew-grid">
+            <div v-for="crew in currentCrew" :key="crew.id" class="crew-item">
+              <PixiCrewAvatar
+                :crew-id="crew.id"
+                :crew-data="crew"
+                :avatar-size="64"
+                :show-details="true"
+                @click="handleCrewSelected(crew)"
+              />
+            </div>
+          </div>
         </div>
         
         <div v-else-if="activeTab === 'dynamics'" class="dynamics-view">
@@ -125,14 +126,36 @@
           NO QUALIFIED CANDIDATES AVAILABLE AT THIS STATION
         </div>
         
-        <div v-else class="crew-grid">
-          <CrewCard 
-            v-for="candidate in filteredAndSortedCrew" 
-            :key="candidate.id" 
-            :crew-member="transformCandidate(candidate)"
-            :show-actions="false" 
-            @select="handleHireCrew(candidate)" 
-          />
+        <div v-else class="candidate-grid">
+          <div v-for="candidate in filteredAndSortedCrew" :key="candidate.id" class="candidate-card">
+            <div class="candidate-avatar">
+              <PixiCrewAvatar
+                :crew-id="candidate.id"
+                :crew-data="candidate"
+                :avatar-size="64"
+                :show-details="true"
+                @avatar-ready="onCandidateAvatarReady"
+                @status-change="onCandidateStatusChange"
+              />
+            </div>
+            <div class="candidate-info">
+              <div class="candidate-name">{{ candidate.name }}</div>
+              <div class="candidate-role">{{ candidate.role }}</div>
+              <div class="candidate-cost">{{ candidate.cost || 1000 }} CR</div>
+              <div class="candidate-skills">
+                <span v-for="(value, skill) in candidate.skills" :key="skill" class="skill-indicator">
+                  {{ skill.slice(0,3).toUpperCase() }}:{{ value }}
+                </span>
+              </div>
+              <button 
+                class="hire-button"
+                @click="handleHireCrew(candidate)"
+                :disabled="currentCrew.length >= maxCrew"
+              >
+                [HIRE]
+              </button>
+            </div>
+          </div>
         </div>
         
         <div v-if="filteredAndSortedCrew.length === 0 && availableCrew.length > 0" class="empty-state">
@@ -173,6 +196,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import CrewCard from './CrewCard.vue'
 import CrewRelationshipMatrix from './CrewRelationshipMatrix.vue'
+import PixiCrewAvatar from './PixiCrewAvatar.vue'
 import Chance from 'chance'
 
 const emit = defineEmits(['close', 'crew-hired', 'crew-assigned'])
@@ -793,6 +817,27 @@ function handleCrewDetails(crewId) {
   }
 }
 
+function handleCrewSelected(crewId) {
+  selectedCrewId.value = crewId
+  // Could trigger additional crew selection logic
+}
+
+function handleStatusAlert(alert) {
+  // Handle status alerts from the Flipper display
+  console.log('Crew status alert:', alert)
+  // Could show notifications or update UI based on alert
+}
+
+function onCandidateAvatarReady(app) {
+  // Handle candidate avatar ready
+  console.log('Candidate avatar ready')
+}
+
+function onCandidateStatusChange(change) {
+  // Handle candidate status changes
+  console.log('Candidate status change:', change)
+}
+
 function closeCrewManagement() {
   emit('close')
   selectedCrewId.value = null
@@ -1000,6 +1045,96 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 12px;
+}
+
+.crew-flipper-section {
+  background: #0a0a0a;
+  border: 1px solid #333333;
+  padding: 12px;
+}
+
+.candidate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.candidate-card {
+  background: #0a0a0a;
+  border: 1px solid #333333;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.candidate-avatar {
+  display: flex;
+  justify-content: center;
+}
+
+.candidate-info {
+  text-align: center;
+  width: 100%;
+}
+
+.candidate-name {
+  font-size: 11px;
+  font-weight: bold;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.candidate-role {
+  font-size: 9px;
+  color: #888888;
+  margin-bottom: 4px;
+}
+
+.candidate-cost {
+  font-size: 10px;
+  color: #00ff00;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.candidate-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.skill-indicator {
+  font-size: 8px;
+  color: #ffffff;
+  background: #333333;
+  padding: 2px 4px;
+  border: 1px solid #555555;
+}
+
+.hire-button {
+  background: #000000;
+  border: 1px solid #ffffff;
+  color: #ffffff;
+  padding: 6px 12px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hire-button:hover:not(:disabled) {
+  background: #ffffff;
+  color: #000000;
+}
+
+.hire-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* State Messages */

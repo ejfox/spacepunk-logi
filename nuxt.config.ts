@@ -12,16 +12,22 @@ export default defineNuxtConfig({
       ]
     }
   },
-  ssr: false, // for netlify deploy
+
+  // for netlify deploy
+  ssr: false,
+
   devtools: { enabled: true },
+
   devServer: {
     port: 3667
   },
+
   nitro: {
     devProxy: {
       '/api': 'http://localhost:3666'
     }
   },
+
   vite: {
     server: {
       proxy: {
@@ -33,6 +39,7 @@ export default defineNuxtConfig({
       }
     }
   },
+
   modules: [
     // '@nuxtjs/supabase',
     '@vueuse/nuxt',
@@ -45,6 +52,7 @@ export default defineNuxtConfig({
       }
     ]
   ],
+
   runtimeConfig: {
     public: {
       OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
@@ -52,11 +60,15 @@ export default defineNuxtConfig({
       PRODUCTION: process.env.PRODUCTION
     }
   },
+
   css: ['~/assets/css/main.css'],
+
   postcss: {
     plugins: {
       tailwindcss: {},
       autoprefixer: {}
     }
-  }
+  },
+
+  compatibilityDate: '2025-07-18'
 })

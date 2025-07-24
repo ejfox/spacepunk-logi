@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lockpicking Component Test</title>
+    <style>
+        body {
+            background: #000;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .test-header {
+            border: 2px solid #00ff00;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .test-info {
+            border: 2px solid #666;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .test-info h3 {
+            margin: 0 0 10px 0;
+            color: #00ffff;
+        }
+        
+        .test-info p {
+            margin: 5px 0;
+        }
+        
+        .key-highlight {
+            background: #333;
+            padding: 2px 6px;
+            border: 1px solid #666;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>> SPACEPUNK LOCKPICKING SYSTEM TEST</h1>
+            <p>Component Status: READY</p>
+        </div>
+        
+        <div class="test-info">
+            <h3>LOCKPICKING MECHANICS</h3>
+            <p><strong>Objective:</strong> Successfully pick all pins in the lock</p>
+            <p><strong>Controls:</strong> Press <span class="key-highlight">SPACEBAR</span> when a pin is in the green target zone</p>
+            <p><strong>Failure:</strong> Miss the target zone and all pins reset</p>
+            <p><strong>Success:</strong> All pins locked in correct positions</p>
+        </div>
+        
+        <div class="test-info">
+            <h3>VISUAL ELEMENTS</h3>
+            <p><strong>Lock Body:</strong> Rectangular frame with corner decorations</p>
+            <p><strong>Pin Housings:</strong> Vertical rectangles (static)</p>
+            <p><strong>Pins:</strong> Moving gray rectangles that oscillate up/down</p>
+            <p><strong>Target Zones:</strong> Green rectangular zones (random positions)</p>
+            <p><strong>Pick Pointer:</strong> White triangle indicating current pin</p>
+            <p><strong>Visual Feedback:</strong> Pins turn green when close to target zone</p>
+        </div>
+        
+        <div class="test-info">
+            <h3>DIFFICULTY SCALING</h3>
+            <p><strong>Routine:</strong> 3 pins, 40px zones, slow speed</p>
+            <p><strong>Standard:</strong> 4 pins, 30px zones, medium speed</p>
+            <p><strong>Challenging:</strong> 5 pins, 20px zones, fast speed</p>
+            <p><strong>Dangerous:</strong> 6 pins, 15px zones, very fast speed</p>
+        </div>
+        
+        <div class="test-info">
+            <h3>CREW SKILL INTEGRATION</h3>
+            <p><strong>Skill Effect:</strong> Higher skill = 40% slower pin movement</p>
+            <p><strong>Demo Skill:</strong> 65/100 (Engineer with lockpicking training)</p>
+            <p><strong>Calculation:</strong> speed * (1 - (skill/100 * 0.4))</p>
+        </div>
+        
+        <div class="test-info">
+            <h3>TECHNICAL IMPLEMENTATION</h3>
+            <p><strong>Framework:</strong> Vue 3 + PixiJS 8.11.0</p>
+            <p><strong>Base Class:</strong> PixiMinigameBase</p>
+            <p><strong>Rendering:</strong> Simple geometric shapes (rectangles, triangles)</p>
+            <p><strong>Animation:</strong> Sine wave oscillation for pin movement</p>
+            <p><strong>Input:</strong> Keyboard event listener for spacebar</p>
+            <p><strong>Styling:</strong> Brutalist aesthetic with pixelated rendering</p>
+        </div>
+        
+        <div class="test-info">
+            <h3>GAME INTEGRATION</h3>
+            <p><strong>Training Type:</strong> "Physical Security Assessment"</p>
+            <p><strong>Required Skill:</strong> Engineering 40+</p>
+            <p><strong>Progression:</strong> Unlocks advanced hacker abilities</p>
+            <p><strong>Corporate Flavor:</strong> "HR requires signed waiver acknowledging assessment skills may violate station regulations"</p>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px; padding: 20px; border: 2px solid #00ff00;">
+            <h2>COMPONENT READY FOR DEPLOYMENT</h2>
+            <p>Access via: <code>http://localhost:3667/brutalist-demo</code></p>
+            <p>Location: LOCKPICKING MINIGAME section</p>
+        </div>
+    </div>
+</body>
+</html>

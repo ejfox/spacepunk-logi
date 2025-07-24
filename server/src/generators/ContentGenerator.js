@@ -158,12 +158,12 @@ Sector: ${sector}
 Population: ~${stats.population}
 Security level: ${stats.securityLevel}% (affects bureaucracy and safety)
 
-Must have: name, description, notorious_for, bureaucratic_nightmare, local_regulations
+Must have: name, description
 
 Make it feel dysfunctional with corporate dystopian humor. Focus on workplace frustrations and bureaucratic absurdity.
 
 Example:
-{"name": "Efficiency Station Gamma-7", "description": "Massive industrial complex producing essential corporate widgets", "notorious_for": "Having 47 different forms required to dock", "bureaucratic_nightmare": "Docking permit requires approval from 4 departments", "local_regulations": "No caffeine above 5mg, mandatory productivity monitoring"}
+{"name": "Efficiency Station Gamma-7", "description": "Massive industrial complex producing essential corporate widgets with mandatory productivity monitoring"}
 
 Generate creative content only:`;
 
@@ -178,14 +178,9 @@ Generate creative content only:`;
           population: stats.population,
           security_level: stats.securityLevel,
           description: result.description,
-          notorious_for: result.notorious_for,
-          bureaucratic_nightmare: result.bureaucratic_nightmare,
-          local_regulations: result.local_regulations,
           docking_fee: stats.dockingFee,
           fuel_price: stats.fuelPrice,
-          repair_quality: stats.repairQuality,
-          black_market_activity: stats.blackMarket,
-          corruption_level: stats.corruption
+          repair_quality: stats.repairQuality
         });
       }
     }

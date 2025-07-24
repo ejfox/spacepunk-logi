@@ -1,0 +1,20 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Glitch corruption effect for level III traits -->
+  <g id="glitch-corruption">
+    <defs>
+      <filter id="glitch">
+        <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0">
+          <animate attributeName="values" 
+            values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0;
+                    0 1 0 0 0  1 0 0 0 0  0 0 1 0 0  0 0 0 1 0;
+                    0 0 1 0 0  0 1 0 0 0  1 0 0 0 0  0 0 0 1 0;
+                    1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1 0"
+            dur="0.2s" repeatCount="indefinite"/>
+        </feColorMatrix>
+      </filter>
+    </defs>
+    <rect x="20" y="45" width="60" height="2" fill="red" opacity="0.8" filter="url(#glitch)"/>
+    <rect x="30" y="48" width="40" height="1" fill="cyan" opacity="0.8" filter="url(#glitch)"/>
+    <rect x="25" y="51" width="50" height="1" fill="lime" opacity="0.8" filter="url(#glitch)"/>
+  </g>
+</svg>

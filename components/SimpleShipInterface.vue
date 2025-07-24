@@ -2,24 +2,21 @@
   <div ref="mainInterfaceRef" class="h-screen bg-black text-white font-mono p-4 grid grid-rows-[60px_1fr_120px] gap-4">
     <!-- TOP HUD BAR -->
     <div class="grid grid-cols-4 gap-4 text-sm">
-      <div class="border border-white p-2 bg-gray-900">
-        <div class="text-green-400">FUEL: {{ fuel }}/{{ maxFuel }}</div>
-        <div class="text-yellow-400">CREDITS: {{ credits }}</div>
+      <div class="hud-display">
+        <div class="hud-title">FUEL_SYS</div>
+        <canvas ref="fuelCanvas" width="120" height="60" class="hud-canvas"></canvas>
       </div>
-      <div class="border border-white p-2 bg-gray-900">
-        <div class="text-blue-400">LOCATION: {{ currentLocation }}</div>
-        <div class="text-gray-400">TICK: {{ currentTick }}</div>
+      <div class="hud-display">
+        <div class="hud-title">NAV_SYS</div>
+        <canvas ref="navCanvas" width="120" height="60" class="hud-canvas"></canvas>
       </div>
-      <div class="border border-white p-2 bg-gray-900">
-        <div :class="heatLevel > 50 ? 'text-red-400' : 'text-green-400'">
-          HEAT: {{ getHeatDisplay(heatLevel) }}
-        </div>
-        <div class="text-gray-400">SEC: {{ getSecurityLevel() }}</div>
+      <div class="hud-display">
+        <div class="hud-title">HEAT_MON</div>
+        <canvas ref="heatCanvas" width="120" height="60" class="hud-canvas"></canvas>
       </div>
-      <div class="border border-white p-2 bg-gray-900">
-        <div class="text-blue-400">CORP: {{ getReputationDisplay('corporate') }}</div>
-        <div class="text-red-400">PIRATE: {{ getReputationDisplay('pirate') }}</div>
-        <div class="text-green-400">INDEP: {{ getReputationDisplay('independent') }}</div>
+      <div class="hud-display">
+        <div class="hud-title">REP_SYS</div>
+        <canvas ref="reputationCanvas" width="120" height="60" class="hud-canvas"></canvas>
       </div>
     </div>
 
@@ -90,6 +87,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, watchEffect } from 'vue'
 import { useWebSocket, useMagicKeys, useElementVisibility, useFps, useIntervalFn } from '@vueuse/core'
+import * as PIXI from 'pixi.js'
 import StatusDisplay from './brutalist/StatusDisplay.vue'
 import ActionGrid from './brutalist/ActionGrid.vue'
 import EventLog from './brutalist/EventLog.vue'
@@ -141,6 +139,16 @@ const showCrewManagement = ref(false)
 
 // Help text system
 const currentHelpText = ref('')
+
+// HUD canvas references
+const fuelCanvas = ref(null)
+const navCanvas = ref(null)
+const heatCanvas = ref(null)
+const reputationCanvas = ref(null)
+const fuelApp = ref(null)
+const navApp = ref(null)
+const heatApp = ref(null)
+const reputationApp = ref(null)
 
 // Computed properties
 const shipStatusItems = computed(() => [
@@ -1016,6 +1024,182 @@ function handleCrewAssigned(crew) {
   // In the future, this could open an assignment dialog or update crew tasks
 }
 
+
+// HUD display initialization
+function initHUDDisplays() {
+  // Initialize fuel display
+  if (fuelCanvas.value) {
+    fuelApp.value = new PIXI.Application({
+      view: fuelCanvas.value,
+      width: 120,
+      height: 60,
+      backgroundColor: 0x000000,
+      antialias: false,
+      resolution: 1
+    })
+    drawFuelDisplay()
+  }
+  
+  // Initialize nav display
+  if (navCanvas.value) {
+    navApp.value = new PIXI.Application({
+      view: navCanvas.value,
+      width: 120,
+      height: 60,
+      backgroundColor: 0x000000,
+      antialias: false,
+      resolution: 1
+    })
+    drawNavDisplay()
+  }
+  
+  // Initialize heat display
+  if (heatCanvas.value) {
+    heatApp.value = new PIXI.Application({
+      view: heatCanvas.value,
+      width: 120,
+      height: 60,
+      backgroundColor: 0x000000,
+      antialias: false,
+      resolution: 1
+    })
+    drawHeatDisplay()
+  }
+  
+  // Initialize reputation display
+  if (reputationCanvas.value) {
+    reputationApp.value = new PIXI.Application({
+      view: reputationCanvas.value,
+      width: 120,
+      height: 60,
+      backgroundColor: 0x000000,
+      antialias: false,
+      resolution: 1
+    })
+    drawReputationDisplay()
+  }
+}
+
+// Drawing functions for each display
+function drawFuelDisplay() {
+  if (!fuelApp.value) return
+  
+  // Clear existing graphics
+  fuelApp.value.stage.removeChildren()
+  
+  const graphics = new PIXI.Graphics()
+  fuelApp.value.stage.addChild(graphics)
+  
+  // Draw fuel bar
+  const fuelPercent = fuel.value / maxFuel.value
+  const barWidth = 100
+  const barHeight = 10
+  
+  // Background
+  graphics.beginFill(0x333333)
+  graphics.drawRect(10, 20, barWidth, barHeight)
+  graphics.endFill()
+  
+  // Fuel level
+  graphics.beginFill(fuelPercent > 0.5 ? 0xFFFFFF : 0x666666)
+  graphics.drawRect(10, 20, barWidth * fuelPercent, barHeight)
+  graphics.endFill()
+  
+  // Fuel numbers in pixel style
+  const fuelText = `${fuel.value}/${maxFuel.value}`
+  drawPixelText(graphics, fuelText, 10, 40, 0xFFFFFF)
+  
+  // Credits
+  const creditsText = `CR:${credits.value}`
+  drawPixelText(graphics, creditsText, 10, 50, 0xFFFFFF)
+}
+
+function drawNavDisplay() {
+  if (!navApp.value) return
+  
+  // Clear existing graphics
+  navApp.value.stage.removeChildren()
+  
+  const graphics = new PIXI.Graphics()
+  navApp.value.stage.addChild(graphics)
+  
+  // Draw location as simple text blocks
+  const locationText = currentLocation.value.substring(0, 12)
+  drawPixelText(graphics, locationText, 5, 20, 0xFFFFFF)
+  
+  // Draw tick counter
+  const tickText = `T:${currentTick.value}`
+  drawPixelText(graphics, tickText, 5, 35, 0xFFFFFF)
+  
+  // Draw simple nav indicator
+  graphics.beginFill(0xFFFFFF)
+  graphics.drawRect(5, 45, 2, 2)
+  graphics.drawRect(9, 45, 2, 2)
+  graphics.drawRect(13, 45, 2, 2)
+  graphics.endFill()
+}
+
+function drawHeatDisplay() {
+  if (!heatApp.value) return
+  
+  // Clear existing graphics
+  heatApp.value.stage.removeChildren()
+  
+  const graphics = new PIXI.Graphics()
+  heatApp.value.stage.addChild(graphics)
+  
+  // Heat level visualization
+  const heatBars = Math.floor(heatLevel.value / 10)
+  for (let i = 0; i < 10; i++) {
+    const intensity = i < heatBars ? 0xFFFFFF : 0x333333
+    graphics.beginFill(intensity)
+    graphics.drawRect(5 + i * 10, 20, 8, 15)
+    graphics.endFill()
+  }
+  
+  // Heat text
+  const heatText = getHeatDisplay(heatLevel.value)
+  drawPixelText(graphics, heatText, 5, 40, 0xFFFFFF)
+  
+  // Security level
+  const secText = `SEC:${getSecurityLevel()}`
+  drawPixelText(graphics, secText, 5, 50, 0xFFFFFF)
+}
+
+function drawReputationDisplay() {
+  if (!reputationApp.value) return
+  
+  // Clear existing graphics
+  reputationApp.value.stage.removeChildren()
+  
+  const graphics = new PIXI.Graphics()
+  reputationApp.value.stage.addChild(graphics)
+  
+  // Draw reputation bars
+  const reps = [
+    { name: 'CORP', value: factionReputation.value.corporate || 0, y: 15 },
+    { name: 'PIRATE', value: factionReputation.value.pirate || 0, y: 28 },
+    { name: 'INDEP', value: factionReputation.value.independent || 0, y: 41 }
+  ]
+  
+  reps.forEach(rep => {
+    const repText = `${rep.name}:${rep.value >= 0 ? '+' : ''}${rep.value}`
+    drawPixelText(graphics, repText, 5, rep.y, 0xFFFFFF)
+  })
+}
+
+function drawPixelText(graphics, text, x, y, color) {
+  // Simple pixel text - just draw rectangles for now
+  // In a real implementation, you'd have a proper bitmap font
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] !== ' ') {
+      graphics.beginFill(color)
+      graphics.drawRect(x + i * 6, y, 4, 6)
+      graphics.endFill()
+    }
+  }
+}
+
 // CASCADING EFFECTS SYSTEM
 function applyCascadingEffect(cascadeEffect) {
   const [type, value] = cascadeEffect.split(': ')
@@ -1184,13 +1368,24 @@ watch(wsData, (newData) => {
     switch (gameUpdate.type) {
       case 'tick_update':
         currentTick.value = gameUpdate.tick
-        if (gameUpdate.fuel !== undefined) fuel.value = gameUpdate.fuel
+        if (gameUpdate.fuel !== undefined) {
+          fuel.value = gameUpdate.fuel
+          drawFuelDisplay()
+        }
         if (gameUpdate.credits !== undefined) {
           ensureValidCredits()
           credits.value = gameUpdate.credits
+          drawFuelDisplay()
         }
-        if (gameUpdate.heat !== undefined) heatLevel.value = gameUpdate.heat
-        if (gameUpdate.location) currentLocation.value = gameUpdate.location
+        if (gameUpdate.heat !== undefined) {
+          heatLevel.value = gameUpdate.heat
+          drawHeatDisplay()
+        }
+        if (gameUpdate.location) {
+          currentLocation.value = gameUpdate.location
+          drawNavDisplay()
+        }
+        drawNavDisplay() // Update tick counter
         addEvent(`> TICK ${gameUpdate.tick}: Systems synchronized`, 'info')
         break
         
@@ -1215,6 +1410,14 @@ watch(wsData, (newData) => {
     console.error('Failed to parse WebSocket data:', error)
   }
 })
+
+// Watch for value changes to update displays
+watch(fuel, () => drawFuelDisplay())
+watch(credits, () => drawFuelDisplay())
+watch(heatLevel, () => drawHeatDisplay())
+watch(currentLocation, () => drawNavDisplay())
+watch(currentTick, () => drawNavDisplay())
+watch(factionReputation, () => drawReputationDisplay(), { deep: true })
 
 // Performance-based quality adjustments
 watch(gameQuality, (quality) => {
@@ -1253,6 +1456,9 @@ onMounted(async () => {
   addEvent('> Ship systems online', 'success')
   addEvent('> Welcome aboard, Captain', 'info')
   addEvent(`> Performance monitor: ${gameQuality.value.toUpperCase()} mode`, 'info')
+  
+  // Initialize HUD displays
+  initHUDDisplays()
   
   // Load player reputation from server
   if (props.playerId) {
@@ -1304,5 +1510,33 @@ onMounted(async () => {
   border: 1px solid currentColor;
   padding: 2px 8px;
   background: rgba(0, 0, 0, 0.9);
+}
+
+/* HUD Display Styles */
+.hud-display {
+  background: #000000;
+  border: 2px solid #ffffff;
+  color: #ffffff;
+  font-family: 'Courier New', monospace;
+  display: flex;
+  flex-direction: column;
+}
+
+.hud-title {
+  background: #111111;
+  border-bottom: 2px solid #ffffff;
+  padding: 4px 8px;
+  font-size: 8px;
+  font-weight: bold;
+  color: #ff6600;
+}
+
+.hud-canvas {
+  display: block;
+  background: #000000;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  flex: 1;
 }
 </style>

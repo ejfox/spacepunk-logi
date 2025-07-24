@@ -121,6 +121,48 @@
           :entries="currentStoryEntries" :show-continue="showStoryContinue" @choice="handleStoryChoice"
           @continue="handleStoryContinue" />
       </div>
+
+      <div class="component-demo">
+        <h3>PIXIJS VISUALIZATION</h3>
+        <PixiCrewExample />
+      </div>
+
+      <div class="component-demo">
+        <h3>CARGO GRID VISUALIZATION</h3>
+        <div class="cargo-controls" style="margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
+          <BrutalistButton label="LOAD DEMO CARGO" @click="loadDemoCargo" />
+          <BrutalistButton label="CLEAR CARGO" @click="clearCargo" />
+          <BrutalistButton label="RANDOM CARGO" @click="randomizeCargo" />
+        </div>
+        <CargoGrid 
+          :cargo-used="demoCargo.length" 
+          :cargo-max="100" 
+          :cargo-items="demoCargo" 
+        />
+      </div>
+
+      <div class="component-demo">
+        <h3>LOCKPICKING MINIGAME</h3>
+        <div class="lockpick-controls" style="margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap;">
+          <BrutalistButton label="ROUTINE LOCK" @click="() => setLockDifficulty('routine')" />
+          <BrutalistButton label="STANDARD LOCK" @click="() => setLockDifficulty('standard')" />
+          <BrutalistButton label="CHALLENGING LOCK" @click="() => setLockDifficulty('challenging')" />
+          <BrutalistButton label="DANGEROUS LOCK" @click="() => setLockDifficulty('dangerous')" />
+        </div>
+        <div v-if="showLockpicking" style="max-width: 700px;">
+          <PixiLockpicking 
+            :difficulty="lockDifficulty" 
+            :crew-skill="lockSkill" 
+            :time-limit="30"
+            @complete="handleLockpickComplete"
+          />
+        </div>
+        <div v-else style="padding: 20px; border: 2px solid #333; text-align: center;">
+          <p>Select a difficulty level to start the lockpicking minigame.</p>
+          <p>Use SPACEBAR to attempt to pick the lock when pins are in the green zones.</p>
+          <p>Current crew skill: {{ lockSkill }}/100</p>
+        </div>
+      </div>
     </section>
   </div>
 </template>
@@ -140,7 +182,10 @@ import {
   StoryLog,
   CrewCard,
   TrainingPanel,
-  MissionBoard
+  MissionBoard,
+  PixiCrewExample,
+  CargoGrid,
+  PixiLockpicking
 } from '~/components/brutalist'
 
 // Demo data
@@ -369,6 +414,27 @@ const currentStoryLocation = ref('Kepler Station - Approach Vector')
 const currentStoryEntries = ref(demoStoryEntries)
 const showStoryContinue = ref(true)
 
+// Demo cargo data
+const demoCargo = ref([])
+
+// Lockpicking demo state
+const showLockpicking = ref(false)
+const lockDifficulty = ref('standard')
+const lockSkill = ref(65) // Demo crew skill level
+
+const availableCargoItems = [
+  { id: 'c1', code: 'COMP_BASIC', name: 'Basic Computer Components', category: 'tech', weight: 0.5, volume: 0.3, quantity: 1 },
+  { id: 'c2', code: 'FUEL_STD', name: 'Standard Fuel', category: 'consumable', weight: 1.0, volume: 1.0, quantity: 1 },
+  { id: 'c3', code: 'FOOD_BASIC', name: 'Basic Food Supplies', category: 'consumable', weight: 1.0, volume: 1.2, quantity: 1 },
+  { id: 'c4', code: 'GEMS_RARE', name: 'Rare Gemstones', category: 'luxury', weight: 0.1, volume: 0.1, quantity: 1 },
+  { id: 'c5', code: 'BIO_SAMPLES', name: 'Biological Samples', category: 'green', weight: 0.2, volume: 0.3, quantity: 1 },
+  { id: 'c6', code: 'WEAPON_SYS', name: 'Weapon System Components', category: 'tech', weight: 3.0, volume: 2.0, quantity: 1 },
+  { id: 'c7', code: 'MEDICINE', name: 'Medical Supplies', category: 'consumable', weight: 0.3, volume: 0.5, quantity: 1 },
+  { id: 'c8', code: 'ARTIFACTS', name: 'Ancient Artifacts', category: 'luxury', weight: 0.5, volume: 0.5, quantity: 1 },
+  { id: 'c9', code: 'PLANTS_MED', name: 'Medicinal Plants', category: 'green', weight: 0.5, volume: 0.8, quantity: 1 },
+  { id: 'c10', code: 'ENGINE_PARTS', name: 'Engine Components', category: 'tech', weight: 5.0, volume: 3.0, quantity: 1 }
+]
+
 // Story control functions
 const loadBasicStory = () => {
   currentStoryTitle.value = 'Arrival at Kepler Station'
@@ -469,6 +535,49 @@ const handleStoryContinue = () => {
 
   currentStoryEntries.value = [...currentStoryEntries.value, continueEntry]
   showStoryContinue.value = false
+}
+
+// Lockpicking event handlers
+const setLockDifficulty = (difficulty) => {
+  lockDifficulty.value = difficulty
+  showLockpicking.value = true
+}
+
+const handleLockpickComplete = (result) => {
+  console.log('Lockpick complete:', result)
+  showLockpicking.value = false
+  
+  // Simple feedback
+  if (result.success) {
+    alert('SUCCESS: Lock picked successfully!')
+  } else {
+    alert('FAILURE: Lock picking failed. Try again.')
+  }
+}
+
+// Cargo control functions
+const loadDemoCargo = () => {
+  demoCargo.value = [
+    { ...availableCargoItems[0], quantity: 5 },
+    { ...availableCargoItems[1], quantity: 10 },
+    { ...availableCargoItems[2], quantity: 8 },
+    { ...availableCargoItems[3], quantity: 2 },
+    { ...availableCargoItems[4], quantity: 3 },
+    { ...availableCargoItems[6], quantity: 4 }
+  ]
+}
+
+const clearCargo = () => {
+  demoCargo.value = []
+}
+
+const randomizeCargo = () => {
+  const randomCount = Math.floor(Math.random() * 8) + 3
+  const shuffled = [...availableCargoItems].sort(() => 0.5 - Math.random())
+  demoCargo.value = shuffled.slice(0, randomCount).map(item => ({
+    ...item,
+    quantity: Math.floor(Math.random() * 15) + 1
+  }))
 }
 </script>
 

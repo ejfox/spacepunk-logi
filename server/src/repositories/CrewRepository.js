@@ -3,8 +3,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { gameRandom } from '../utils/seededRandom.js';
 import { LLMConfig } from '../utils/llmConfig.js';
 import fetch from 'node-fetch';
+import { CrewGenerator } from '../generators/CrewGenerator.js';
+import { CrewAvatarGenerator } from '../generators/CrewAvatarGenerator.js';
 
 export class CrewRepository {
+  constructor() {
+    this.avatarGenerator = new CrewAvatarGenerator();
+  }
+
   async create(crewData) {
     const {
       shipId = null,
@@ -14,7 +20,12 @@ export class CrewRepository {
       culture = 'Unknown',
       skills = {},
       personality = {},
-      parentIds = []
+      parentIds = [],
+      crew_type = 'general',
+      crew_type_name = 'General Crew',
+      crew_type_description = 'Basic crew member with no specializations',
+      crew_bonuses = {},
+      salary = 50
     } = crewData;
     
     const id = uuidv4();
@@ -36,14 +47,14 @@ export class CrewRepository {
          id, ship_id, name, age, homeworld, culture,
          skill_engineering, skill_piloting, skill_social, skill_combat,
          trait_bravery, trait_loyalty, trait_ambition, trait_work_ethic,
-         parent_ids
+         parent_ids, crew_type, crew_type_name, crew_type_description, crew_bonuses, salary
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-       RETURNING id, ship_id, name, age, homeworld, culture, hired_at`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+       RETURNING id, ship_id, name, age, homeworld, culture, crew_type, crew_type_name, crew_type_description, crew_bonuses, salary, hired_at`,
       [id, shipId, name, age, homeworld, culture,
        skillEngineering, skillPiloting, skillSocial, skillCombat,
        traitBravery, traitLoyalty, traitAmbition, traitWorkEthic,
-       parentIds]
+       parentIds, crew_type, crew_type_name, crew_type_description, JSON.stringify(crew_bonuses), salary]
     );
     
     return result.rows[0];
@@ -55,6 +66,7 @@ export class CrewRepository {
               skill_engineering, skill_piloting, skill_social, skill_combat,
               trait_bravery, trait_loyalty, trait_ambition, trait_work_ethic,
               health, morale, fatigue, parent_ids,
+              crew_type, crew_type_name, crew_type_description, crew_bonuses, salary,
               hired_at, created_at, updated_at, died_at
        FROM crew_members 
        WHERE id = $1`,
@@ -77,6 +89,7 @@ export class CrewRepository {
               skill_engineering, skill_piloting, skill_social, skill_combat,
               trait_bravery, trait_loyalty, trait_ambition, trait_work_ethic,
               health, morale, fatigue, parent_ids,
+              crew_type, crew_type_name, crew_type_description, crew_bonuses, salary,
               hired_at, created_at, updated_at, died_at
        FROM crew_members 
        WHERE ship_id = $1 AND died_at IS NULL
@@ -107,7 +120,8 @@ export class CrewRepository {
       `SELECT id, name, age, homeworld, culture,
               skill_engineering, skill_piloting, skill_social, skill_combat,
               trait_bravery, trait_loyalty, trait_ambition, trait_work_ethic,
-              health, morale, fatigue
+              health, morale, fatigue,
+              crew_type, crew_type_name, crew_type_description, crew_bonuses, salary, hiring_cost
        FROM crew_members 
        WHERE ship_id IS NULL AND died_at IS NULL
        ORDER BY created_at DESC
@@ -317,142 +331,106 @@ export class CrewRepository {
     return result.rows;
   }
 
-  async generateAvailableCrew(count = 5) {
-    const llmConfig = new LLMConfig();
+  async generateAvailableCrew(count = 8) {
+    const crewGenerator = new CrewGenerator();
     const crew = [];
     
-    const homeworlds = [
-      'Earth', 'Mars', 'Luna', 'Europa', 'Titan', 'Callisto', 'Ganymede',
-      'Phobos', 'Asteroid-7', 'Ceres Station', 'Proxima Base', 'New Geneva'
-    ];
-    
-    for (let i = 0; i < count; i++) {
-      try {
-        // Use chance.js for base attributes
-        const { name, culture } = gameRandom.generateCrewName();
-        const homeworld = gameRandom.chance.pickone(homeworlds);
-        const age = gameRandom.chance.integer({ min: 22, max: 55 });
-        const skills = gameRandom.generateCrewSkills();
-        const traits = gameRandom.generateCrewTraits();
-        
-        // Generate LLM backstory and personality
-        let backstory = "Standard personnel file.";
-        let employmentNotes = "No additional notes.";
-        
-        if (llmConfig.isConfigured()) {
-          const prompt = `You are HR personnel database for Spacepunk Logistics. Generate corporate backstory for:
-
-NAME: ${name}
-AGE: ${age}
-HOMEWORLD: ${homeworld}
-CULTURE: ${culture}
-SKILLS: Engineering ${skills.engineering}, Piloting ${skills.piloting}, Social ${skills.social}, Combat ${skills.combat}
-PERSONALITY: ${traits.extroversion > 50 ? 'Extroverted' : 'Introverted'}, ${traits.thinking > 50 ? 'Analytical' : 'People-focused'}, ${traits.sensing > 50 ? 'Practical' : 'Visionary'}
-ARCHETYPE: ${traits.dominant_archetype} (primary personality driver)
-
-Write 2-3 sentences of corporate HR backstory in cynical space trucking tone. Include previous employment, why they're available for hire, and one memorable workplace incident. Subtly reference their ${traits.dominant_archetype} archetype in corporate euphemisms.
-
-ARCHETYPE CONTEXT:
-- innocent: naive optimism, seeks harmony
-- sage: wisdom-seeking, analytical
-- explorer: freedom-loving, independent  
-- outlaw: rule-breaking, revolutionary
-- magician: transformative, visionary
-- hero: courageous, determined
-- lover: relationship-focused, passionate
-- jester: humor, disrupts status quo
-- caregiver: nurturing, protective
-- creator: innovative, artistic
-- ruler: leadership, control
-- orphan: realistic, down-to-earth
-
-Format as JSON:
-{
-  "backstory": "...",
-  "employment_notes": "..."
-}`;
-
-          try {
-            const response = await fetch(llmConfig.getEndpoint(), {
-              method: 'POST',
-              headers: llmConfig.config.headers,
-              body: JSON.stringify({
-                model: llmConfig.config.model,
-                messages: [{ role: 'user', content: prompt }],
-                max_tokens: 200,
-                temperature: 0.8
-              })
-            });
-
-            if (response.ok) {
-              const data = await response.json();
-              const content = data.choices[0].message.content;
-              const jsonMatch = content.match(/\{[\s\S]*\}/);
-              
-              if (jsonMatch) {
-                const parsed = JSON.parse(jsonMatch[0]);
-                backstory = parsed.backstory || backstory;
-                employmentNotes = parsed.employment_notes || employmentNotes;
-              }
-            }
-          } catch (llmError) {
-            console.log('LLM generation failed, using chance.js fallback');
-          }
+    try {
+      // Generate a mixed pool of crew types using CrewGenerator
+      const generatedCrew = crewGenerator.generateCrewPool(count);
+      
+      for (const crewMember of generatedCrew) {
+        // Insert into database
+        const result = await this.create(crewMember);
+        if (result) {
+          crew.push(result);
         }
-        
-        // Calculate hiring cost based on total skills using chance.js  
-        const totalSkills = Object.values(skills).reduce((sum, skill) => sum + skill, 0);
-        const baseCost = 300 + (totalSkills / 4) * 3;
-        const costVariation = gameRandom.chance.integer({ min: -50, max: 50 });
-        const hiringCost = baseCost + costVariation;
-        
-        const crewMember = {
-          id: uuidv4(),
-          name,
-          age,
-          homeworld,
-          culture,
-          cultural_background: culture,
-          skill_engineering: skills.engineering,
-          skill_piloting: skills.piloting,
-          skill_social: skills.social,
-          skill_combat: skills.combat,
-          trait_bravery: traits.bravery,
-          trait_loyalty: traits.loyalty,
-          trait_ambition: traits.ambition,
-          trait_work_ethic: traits.work_ethic,
-          trait_extroversion: traits.extroversion,
-          trait_thinking: traits.thinking,
-          trait_sensing: traits.sensing,
-          trait_judging: traits.judging,
-          archetype_innocent: traits.innocent,
-          archetype_sage: traits.sage,
-          archetype_explorer: traits.explorer,
-          archetype_outlaw: traits.outlaw,
-          archetype_magician: traits.magician,
-          archetype_hero: traits.hero,
-          archetype_lover: traits.lover,
-          archetype_jester: traits.jester,
-          archetype_caregiver: traits.caregiver,
-          archetype_creator: traits.creator,
-          archetype_ruler: traits.ruler,
-          archetype_orphan: traits.orphan,
-          dominant_archetype: traits.dominant_archetype,
-          hiring_cost: hiringCost,
-          health: gameRandom.chance.integer({ min: 90, max: 100 }),
-          morale: gameRandom.chance.integer({ min: 60, max: 90 }),
-          fatigue: gameRandom.chance.integer({ min: 10, max: 30 }),
-          backstory,
-          employment_notes: employmentNotes
-        };
-        
-        crew.push(crewMember);
-      } catch (error) {
-        console.error('Error generating crew member:', error);
-        // Skip this crew member if generation fails completely
       }
+      
+      console.log(`Generated ${crew.length} crew members with specialized types`);
+      return crew;
+    } catch (error) {
+      console.error('Error generating crew members:', error);
+      return [];
     }
+  }
+
+  /**
+   * Get crew bonuses that apply to ship operations
+   * @param {string} shipId - The ship ID to get crew bonuses for
+   * @returns {object} Combined bonuses from all crew members
+   */
+  async getCrewBonuses(shipId) {
+    const crew = await this.findByShipId(shipId);
     
-    return crew;
+    const combinedBonuses = {
+      fuel_efficiency: 0,
+      fuel_decay_reduction: 0,
+      illegal_cargo_profit: 0,
+      heat_reduction_smuggling: 0,
+      heat_reduction_politics: 0,
+      reputation_bonus: 0
+    };
+    
+    crew.forEach(crewMember => {
+      if (crewMember.crew_bonuses) {
+        const bonuses = typeof crewMember.crew_bonuses === 'string' 
+          ? JSON.parse(crewMember.crew_bonuses) 
+          : crewMember.crew_bonuses;
+          
+        Object.keys(bonuses).forEach(bonus => {
+          if (combinedBonuses.hasOwnProperty(bonus)) {
+            combinedBonuses[bonus] += bonuses[bonus];
+          }
+        });
+      }
+    });
+    
+    return combinedBonuses;
+  }
+
+  /**
+   * Calculate total crew salaries for a ship
+   * @param {string} shipId - The ship ID
+   * @returns {number} Total salary cost per tick
+   */
+  async getTotalSalaries(shipId) {
+    const crew = await this.findByShipId(shipId);
+    return crew.reduce((total, crewMember) => total + (crewMember.salary || 50), 0);
+  }
+
+  /**
+   * Enrich crew data with generated avatars
+   * @param {Array|Object} crewData - Single crew member or array of crew members
+   * @param {Array} playerMetaTraits - Player's meta-knowledge traits for progressive revelation
+   * @returns {Array|Object} Crew data with avatar_svg field added
+   */
+  enrichWithAvatars(crewData, playerMetaTraits = []) {
+    if (Array.isArray(crewData)) {
+      // Batch generation for arrays
+      const avatars = this.avatarGenerator.generateBatch(crewData, playerMetaTraits);
+      return crewData.map(crew => ({
+        ...crew,
+        avatar_svg: avatars[crew.id]
+      }));
+    } else if (crewData && crewData.id) {
+      // Single crew member
+      return {
+        ...crewData,
+        avatar_svg: this.avatarGenerator.generateAvatar(crewData, playerMetaTraits)
+      };
+    }
+    return crewData;
+  }
+
+  /**
+   * Find crew by ship ID with avatars
+   * @param {string} shipId - The ship ID
+   * @param {Array} playerMetaTraits - Player's meta-knowledge traits
+   * @returns {Array} Crew members with avatar SVGs
+   */
+  async findByShipIdWithAvatars(shipId, playerMetaTraits = []) {
+    const crew = await this.findByShipId(shipId);
+    return this.enrichWithAvatars(crew, playerMetaTraits);
   }
 }

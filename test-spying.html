@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spacepunk Spying Interface Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000000;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            border: 2px solid #00ff00;
+            padding: 20px;
+            background: #111111;
+        }
+        
+        .component-container {
+            margin-bottom: 20px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .control-group label {
+            font-size: 12px;
+            color: #00ff00;
+        }
+        
+        .control-group select,
+        .control-group input {
+            background: #000000;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 5px;
+            font-family: monospace;
+        }
+        
+        .test-button {
+            background: #000000;
+            color: #00ff00;
+            border: 2px solid #00ff00;
+            padding: 10px 20px;
+            font-family: monospace;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+        
+        .test-button:hover {
+            background: #00ff00;
+            color: #000000;
+        }
+        
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #00ff00;
+            background: #111111;
+            font-size: 12px;
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #00ff00;
+            background: #111111;
+            font-size: 12px;
+        }
+        
+        .instructions h3 {
+            color: #00ff00;
+            margin-top: 0;
+        }
+        
+        .instructions ul {
+            margin-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>SPACEPUNK SPYING INTERFACE</h1>
+            <p>SURVEILLANCE SIMULATION MODULE</p>
+            <p>STATUS: OPERATIONAL</p>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="difficulty">DIFFICULTY:</label>
+                <select id="difficulty">
+                    <option value="easy">EASY</option>
+                    <option value="standard" selected>STANDARD</option>
+                    <option value="hard">HARD</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="crewSkill">CREW SKILL:</label>
+                <input type="number" id="crewSkill" min="0" max="100" value="50">
+            </div>
+            
+            <div class="control-group">
+                <label for="timeLimit">TIME LIMIT:</label>
+                <input type="number" id="timeLimit" min="10" max="120" value="45">
+            </div>
+        </div>
+        
+        <button class="test-button" onclick="startSpying()">INITIALIZE SURVEILLANCE</button>
+        
+        <div class="component-container" id="spyingContainer">
+            <!-- Spying component will be rendered here -->
+        </div>
+        
+        <div class="results" id="results" style="display: none;">
+            <h3>MISSION RESULTS:</h3>
+            <div id="resultContent"></div>
+        </div>
+        
+        <div class="instructions">
+            <h3>SURVEILLANCE INTERFACE GUIDE:</h3>
+            <ul>
+                <li><strong>SCAN LINES:</strong> Multiple scanning beams move across the detection grid</li>
+                <li><strong>MOVING DOTS:</strong> Pulsing scanner dots travel along each scan line</li>
+                <li><strong>TARGETS:</strong> Different geometric shapes contain valuable intelligence</li>
+                <li><strong>DETECTION RISK:</strong> Each target has a different risk level - higher skill reduces detection</li>
+                <li><strong>SHAPES:</strong> Circles pulse, squares rotate, triangles fade, diamonds oscillate</li>
+                <li><strong>SCAN PATTERNS:</strong> Solid, dashed, and dotted lines provide different scan types</li>
+                <li><strong>OBJECTIVE:</strong> Gather required intelligence before detection reaches 100%</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Vue.js and component imports would go here in a real implementation -->
+    <script>
+        // Mock implementation for testing
+        function startSpying() {
+            const container = document.getElementById('spyingContainer');
+            const difficulty = document.getElementById('difficulty').value;
+            const crewSkill = document.getElementById('crewSkill').value;
+            const timeLimit = document.getElementById('timeLimit').value;
+            
+            // In a real implementation, this would render the Vue component
+            container.innerHTML = `
+                <div style="border: 2px solid #00ff00; padding: 20px; text-align: center; background: #111111;">
+                    <h3>SURVEILLANCE INTERFACE INITIALIZED</h3>
+                    <p>DIFFICULTY: ${difficulty.toUpperCase()}</p>
+                    <p>CREW SKILL: ${crewSkill}/100</p>
+                    <p>TIME LIMIT: ${timeLimit}s</p>
+                    <p style="color: #ff6600;">PIXI.JS VISUALIZATION WOULD APPEAR HERE</p>
+                    <p style="font-size: 12px; margin-top: 20px;">
+                        This is a mock interface. In the actual implementation,<br>
+                        the PixiSpying.vue component would render here with<br>
+                        moving scan lines, dots, and interactive targets.
+                    </p>
+                    <button class="test-button" onclick="mockComplete()" style="margin-top: 15px;">
+                        SIMULATE MISSION COMPLETE
+                    </button>
+                </div>
+            `;
+            
+            // Hide results
+            document.getElementById('results').style.display = 'none';
+        }
+        
+        function mockComplete() {
+            const results = document.getElementById('results');
+            const resultContent = document.getElementById('resultContent');
+            
+            const success = Math.random() > 0.5;
+            const dataGathered = Math.floor(Math.random() * 100);
+            const detectionLevel = Math.floor(Math.random() * 100);
+            
+            resultContent.innerHTML = `
+                <p><strong>STATUS:</strong> ${success ? 'SUCCESS' : 'FAILURE'}</p>
+                <p><strong>DATA GATHERED:</strong> ${dataGathered} units</p>
+                <p><strong>DETECTION LEVEL:</strong> ${detectionLevel}%</p>
+                <p><strong>STEALTH RATING:</strong> ${100 - detectionLevel}%</p>
+            `;
+            
+            results.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

@@ -9,6 +9,9 @@ import TrainingQueue from '../training/TrainingQueue.js';
 import { TrainingQueueRepository } from '../repositories/TrainingQueueRepository.js';
 import { MicroNarrativeGenerator } from '../narrative/MicroNarrativeGenerator.js';
 import { CrewRepository } from '../repositories/CrewRepository.js';
+import { ShipRepository } from '../repositories/ShipRepository.js';
+import { PlayerRepository } from '../repositories/PlayerRepository.js';
+import NPCManager from '../world/NPCManager.js';
 
 export class TickEngine extends EventEmitter {
   constructor(tickInterval) {
@@ -34,7 +37,12 @@ export class TickEngine extends EventEmitter {
     // Initialize narrative generation systems
     this.microNarrative = new MicroNarrativeGenerator();
     this.crewRepository = new CrewRepository();
+    this.shipRepository = new ShipRepository();
+    this.playerRepository = new PlayerRepository();
     this.narrativeRotationIndex = 0; // Rotate through crew for narrative generation
+    
+    // Initialize NPC systems
+    this.npcManager = NPCManager;
     
     // Forward market events
     this.marketSimulation.on('marketEvent', (event) => {
@@ -118,6 +126,7 @@ export class TickEngine extends EventEmitter {
       await this.processMarketSystems();
       await this.processMissionSystems();
       await this.processFactionSystems();
+      await this.processNPCSystems();
       await this.processNarrativeGeneration();
       
       // Record tick completion
@@ -137,8 +146,75 @@ export class TickEngine extends EventEmitter {
   }
 
   async processResourceSystems() {
-    // TODO: Implement resource consumption, production, degradation
-    // (Silent processing - only log if there are notable events)
+    try {
+      // Process crew salaries and fuel consumption for all active ships
+      const activeShips = await this.shipRepository.getActiveShips();
+      
+      for (const ship of activeShips) {
+        await this.processShipExpenses(ship);
+      }
+      
+      // Only log if there are notable events
+    } catch (error) {
+      console.error('Error processing resource systems:', error);
+    }
+  }
+
+  async processShipExpenses(ship) {
+    try {
+      // Get crew bonuses for this ship
+      const crewBonuses = await this.crewRepository.getCrewBonuses(ship.id);
+      const totalSalaries = await this.crewRepository.getTotalSalaries(ship.id);
+      
+      // Calculate fuel consumption with crew bonuses
+      const baseFuelDecay = 1.0; // Base fuel consumption per tick
+      const fuelEfficiencyBonus = crewBonuses.fuel_efficiency || 0;
+      const fuelDecayReduction = crewBonuses.fuel_decay_reduction || 0;
+      
+      // Apply bonuses: efficiency reduces consumption, decay reduction also reduces consumption
+      const actualFuelConsumption = baseFuelDecay * (1 - fuelEfficiencyBonus) * (1 - fuelDecayReduction);
+      
+      // Only consume fuel if ship has any
+      if (ship.fuel_current > 0) {
+        const newFuelLevel = Math.max(0, ship.fuel_current - actualFuelConsumption);
+        await this.shipRepository.updateFuel(ship.id, newFuelLevel);
+        
+        // Emit event if fuel is getting low
+        if (newFuelLevel < 20 && ship.fuel_current >= 20) {
+          this.emit('ship:lowFuel', { 
+            shipId: ship.id, 
+            fuelLevel: newFuelLevel,
+            bonuses: crewBonuses
+          });
+        }
+      }
+      
+      // Deduct crew salaries from player credits
+      if (totalSalaries > 0) {
+        const player = await this.playerRepository.findById(ship.player_id);
+        if (player) {
+          // updateCredits adds the amount, so use negative for deduction
+          const result = await this.playerRepository.updateCredits(player.id, -totalSalaries);
+          
+          // Emit event if player is running low on credits
+          if (result && result.credits < 1000 && player.credits >= 1000) {
+            this.emit('player:lowCredits', { 
+              playerId: player.id, 
+              credits: result.credits,
+              salariesOwed: totalSalaries
+            });
+          }
+        }
+      }
+      
+      // Log significant changes
+      if (fuelEfficiencyBonus > 0 || fuelDecayReduction > 0) {
+        console.log(`🔧 Ship ${ship.name}: Fuel consumption reduced by ${Math.round((fuelEfficiencyBonus + fuelDecayReduction) * 100)}% due to crew bonuses`);
+      }
+      
+    } catch (error) {
+      console.error(`Error processing expenses for ship ${ship.id}:`, error);
+    }
   }
 
   async processCrewSystems() {
@@ -528,6 +604,33 @@ export class TickEngine extends EventEmitter {
     console.log('Processing faction systems...');
   }
 
+  async processNPCSystems() {
+    try {
+      // Process all NPCs during this tick
+      await this.npcManager.processNPCTick(this.currentTick);
+      
+      // Get recent NPC activity for client updates
+      const recentActivity = this.npcManager.getRecentActivity(5);
+      
+      // Emit NPC activity updates
+      if (recentActivity.length > 0) {
+        this.emit('npc:activity', {
+          tick: this.currentTick,
+          activity: recentActivity,
+          activeNPCs: this.npcManager.npcs.size
+        });
+      }
+      
+      // Only log if there are active NPCs
+      if (this.npcManager.npcs.size > 0 && this.currentTick % 5 === 0) {
+        console.log(`👥 Active NPCs: ${this.npcManager.npcs.size}`);
+      }
+    } catch (error) {
+      console.error('Error processing NPC systems:', error);
+      throw error;
+    }
+  }
+
   async processNarrativeGeneration() {
     try {
       // Only generate narratives every few ticks to avoid overwhelming the LLM queue
@@ -663,5 +766,22 @@ export class TickEngine extends EventEmitter {
       // Table might not exist yet, log but don't crash
       console.warn('Could not record tick history:', error.message);
     }
+  }
+
+  // Helper methods for NPC integration
+  getNPCsAtLocation(locationId) {
+    return this.npcManager.getNPCsAtLocation(locationId);
+  }
+
+  getRandomNPCEncounter(locationId, playerFaction) {
+    return this.npcManager.getRandomEncounter(locationId, playerFaction);
+  }
+
+  getNPCActivity(limit = 20) {
+    return this.npcManager.getRecentActivity(limit);
+  }
+
+  async generateNPC() {
+    return await this.npcManager.generateNPC();
   }
 }

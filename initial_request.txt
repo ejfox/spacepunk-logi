@@ -1,0 +1,11 @@
+Work on Spacepunk game development while I'm on vacation. Focus on these priorities:
+
+1. Enhance the crew management system with better AI and personality simulation
+2. Improve the LLM streaming system for smoother user experience  
+3. Add new game features based on the requirements in CLAUDE.md
+4. Optimize the tick engine for better performance
+5. Expand the brutalist UI components with new interface elements
+6. Test everything thoroughly using the test-client.js system
+
+Make steady progress each day, test your changes, and keep detailed logs. Follow the existing code patterns and maintain the brutalist aesthetic. Be creative but stay true to the Spacepunk vision.
+EOF < /dev/null

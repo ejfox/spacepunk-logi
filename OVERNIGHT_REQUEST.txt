@@ -1,0 +1,33 @@
+AUTONOMOUS SPACEPUNK DEVELOPMENT - OVERNIGHT SESSION
+
+WORKFLOW:
+1. Run 'gh issue list' to see all open issues
+2. Pick the next logical issue to work on (start with simpler ones, build up to complex)
+3. Create a new branch: 'git checkout -b issue-<number>-<short-description>'
+4. Work on the issue following CLAUDE.md requirements
+5. Test thoroughly using 'node test-client.js full'
+6. Commit changes with proper message
+7. Create PR: 'gh pr create --title "Fix #<number>: <description>" --body "Closes #<number>"'
+8. Move to next issue
+
+PRIORITIES:
+- Start with database/infrastructure issues (#53, #52, #49, #36, etc)
+- Build up to gameplay systems (#54, #55, #56, etc)
+- Focus on crew management and trait systems
+- Maintain brutalist UI aesthetic
+- Test everything before moving on
+
+IF NO MORE ISSUES:
+- Research and propose new game mechanics that fit the cyberpunk theme
+- Enhance existing systems based on CLAUDE.md vision
+- Run playtests and document findings
+- Create new issues for discovered improvements
+
+CONSTRAINTS:
+- Follow existing code patterns and brutalist design
+- Test all changes before committing
+- Write clear commit messages and PR descriptions
+- Keep the "terrible corporate software" aesthetic
+- Maintain the tick-based authoritative server architecture
+
+Work steadily through the night. Make real progress on multiple issues. Be autonomous but thoughtful.

@@ -93,6 +93,19 @@ export class ShipRepository {
     return result.rows[0] || null;
   }
 
+  async getActiveShips() {
+    const result = await query(
+      `SELECT id, player_id, name, hull_type, status, location_galaxy, location_station,
+              fuel_current, fuel_max, cargo_used, cargo_max,
+              created_at, updated_at
+       FROM ships 
+       WHERE destroyed_at IS NULL AND status = 'operational'
+       ORDER BY created_at ASC`
+    );
+    
+    return result.rows;
+  }
+
   async updateCargo(id, cargoUsed) {
     const result = await query(
       `UPDATE ships 

@@ -1,0 +1,9 @@
+<svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+  <!-- Handshake icon for Good With People -->
+  <g id="good-people">
+    <path d="M 4,10 Q 7,8 10,10 T 16,10" stroke="currentColor" stroke-width="1.5" fill="none"/>
+    <circle cx="4" cy="10" r="1.5" fill="currentColor"/>
+    <circle cx="16" cy="10" r="1.5" fill="currentColor"/>
+    <path d="M 8,10 L 9,12 L 11,12 L 12,10" stroke="currentColor" stroke-width="1" fill="none" opacity="0.6"/>
+  </g>
+</svg>

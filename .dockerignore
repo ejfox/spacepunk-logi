@@ -1,0 +1,13 @@
+# Exclude large/unnecessary files from Docker context
+node_modules/
+server/node_modules/
+.git/
+*.log
+logs/
+auto-claude-output/
+auto-claude-logs/
+.DS_Store
+*.swp
+*.swo
+.env
+.env.local

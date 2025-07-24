@@ -1,0 +1,15 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- High fatigue overlay - static/noise effect -->
+  <g id="fatigue-high-overlay">
+    <defs>
+      <pattern id="static-pattern" x="0" y="0" width="4" height="4" patternUnits="userSpaceOnUse">
+        <rect x="0" y="0" width="1" height="1" fill="gray" opacity="0.3"/>
+        <rect x="2" y="1" width="1" height="1" fill="gray" opacity="0.3"/>
+        <rect x="1" y="2" width="1" height="1" fill="gray" opacity="0.3"/>
+        <rect x="3" y="3" width="1" height="1" fill="gray" opacity="0.3"/>
+      </pattern>
+    </defs>
+    <rect x="0" y="0" width="100" height="100" fill="url(#static-pattern)"/>
+    <text x="50" y="95" text-anchor="middle" font-family="monospace" font-size="8" fill="gray" opacity="0.5">FATIGUE</text>
+  </g>
+</svg>
